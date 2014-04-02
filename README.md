@@ -33,17 +33,15 @@ import (
 )
 
 func main() {
+	// init
 	prefix := "myproject."
 	statsdclient := statsd.NewStatsdClient("localhost:8125", prefix)
 	statsdclient.CreateSocket()
 	stats := statsd.NewStatsdBuffer(interval, statsdclient)
 	defer stats.Close()
 
-
-
 	// not buffered: send immediately
 	statsdclient.Incr("mymetric", 4)
-
 
 	// buffered: aggregate in memory before flushing
 	stats.Incr("mymetric", 1)
