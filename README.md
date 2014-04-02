@@ -56,4 +56,4 @@ func main() {
 
 ## Copyright
 
-See LICENSE document
+See [LICENSE](LICENSE) document
