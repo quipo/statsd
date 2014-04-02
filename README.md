@@ -45,7 +45,7 @@ func main() {
 	statsdclient.Incr("mymetric", 4)
 
 
-	// buffrered: aggregate in memory before flushing
+	// buffered: aggregate in memory before flushing
 	stats.Incr("mymetric", 1)
 	stats.Incr("mymetric", 3)
 	stats.Incr("mymetric", 1)
