@@ -49,8 +49,16 @@ func main() {
 	stats.Incr("mymetric", 1)
 	stats.Incr("mymetric", 1)
 }
-
 ```
+
+## Author
+
+Lorenzo Alberton
+
+* Web: [http://alberton.info](http://alberton.info)
+* Twitter: [@lorenzoalberton](https://twitter.com/lorenzoalberton)
+* Linkedin: [/in/lorenzoalberton](https://www.linkedin.com/in/lorenzoalberton)
+
 
 ## Copyright
 
