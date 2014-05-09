@@ -40,6 +40,9 @@ func (c *StatsdClient) CreateSocket() error {
 
 // Close the UDP connection
 func (c *StatsdClient) Close() error {
+	if nil == c.conn {
+		return nil
+	}
 	return c.conn.Close()
 }
 
