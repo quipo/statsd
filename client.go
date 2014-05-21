@@ -3,10 +3,20 @@ package statsd
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/quipo/statsd/event"
 )
+
+var hostname string
+
+func init() {
+	host, err := os.Hostname()
+	if nil == err {
+		hostname = host
+	}
+}
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
@@ -91,6 +101,7 @@ func (c *StatsdClient) send(stat string, format string, value int64) error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
+	stat = strings.Replace(stat, "%HOST%", hostname, 1)
 	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
 	//fmt.Printf("SENDING %s%s:%s\n", c.prefix, stat, format)
 	_, err := fmt.Fprintf(c.conn, format, value)

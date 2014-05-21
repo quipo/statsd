@@ -51,6 +51,9 @@ func main() {
 }
 ```
 
+The string "%HOST%" in the metric name will automatically be replaced with the hostname of the server the event is sent from.
+
+
 ## Author
 
 Lorenzo Alberton
