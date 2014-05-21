@@ -2,8 +2,8 @@ package statsd
 
 import (
 	"fmt"
-	"os"
 	"net"
+	"os"
 	"strings"
 	"time"
 
