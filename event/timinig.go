@@ -43,8 +43,8 @@ func (e Timing) Payload() interface{} {
 func (e Timing) Stats() []string {
 	return []string{
 		fmt.Sprintf("%s.avg:%d|a", e.Name, int64(e.Value/e.Count)), // make sure e.Count != 0
-		fmt.Sprintf("%s.min:%d|a", e.Name, e.Max),
-		fmt.Sprintf("%s.max:%d|a", e.Name, e.Min),
+		fmt.Sprintf("%s.min:%d|a", e.Name, e.Min),
+		fmt.Sprintf("%s.max:%d|a", e.Name, e.Max),
 	}
 }
 
