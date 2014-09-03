@@ -82,9 +82,15 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 
 // Gauge - Gauges are a constant data type. They are not subject to averaging,
 // and they don’t change unless you change them. That is, once you set a gauge value,
-// it will be a flat line on the graph until you change it again
-func (c *StatsdClient) Gauge(stat string, value int64) error {
-	return c.send(stat, "%d|g", value)
+// it will be a flat line on the graph until you change it again. If you specify
+// delta to be true, that specifies that the gauge should be updated, not set. Due to the
+// underlying protocol, you can't explicitly set a gauge to a negative number without
+// first setting it to zero.
+func (c *StatsdClient) Gauge(stat string, value int64, delta bool) error {
+	if delta == false || value < 0 {
+		return c.send(stat, "%d|g", value)
+	}
+	return c.send(stat, "+%d|g", value)
 }
 
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
