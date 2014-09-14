@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -24,6 +25,7 @@ type StatsdClient struct {
 	conn   net.Conn
 	addr   string
 	prefix string
+	Logger *log.Logger
 }
 
 // NewStatsdClient - Factory
@@ -31,6 +33,7 @@ func NewStatsdClient(addr string, prefix string) *StatsdClient {
 	return &StatsdClient{
 		addr:   addr,
 		prefix: prefix,
+		Logger: log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
 	}
 }
 
@@ -86,8 +89,8 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 // delta to be true, that specifies that the gauge should be updated, not set. Due to the
 // underlying protocol, you can't explicitly set a gauge to a negative number without
 // first setting it to zero.
-func (c *StatsdClient) Gauge(stat string, value int64, delta bool) error {
-	if delta == false || value < 0 {
+func (c *StatsdClient) Gauge(stat string, value int64) error {
+	if value < 0 {
 		return c.send(stat, "%d|g", value)
 	}
 	return c.send(stat, "+%d|g", value)
