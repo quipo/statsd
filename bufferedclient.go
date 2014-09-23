@@ -2,6 +2,8 @@ package statsd
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -21,6 +23,7 @@ type StatsdBuffer struct {
 	eventChannel  chan event.Event
 	events        map[string]event.Event
 	closeChannel  chan closeRequest
+	Logger        *log.Logger
 }
 
 // NewStatsdBuffer Factory
@@ -31,6 +34,7 @@ func NewStatsdBuffer(interval time.Duration, client *StatsdClient) *StatsdBuffer
 		eventChannel:  make(chan event.Event, 100),
 		events:        make(map[string]event.Event, 0),
 		closeChannel:  make(chan closeRequest, 0),
+		Logger:        log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
 	}
 	go sb.collector()
 	return sb
@@ -83,7 +87,7 @@ func (sb *StatsdBuffer) collector() {
 	// on a panic event, flush all the pending stats before panicking
 	defer func(sb *StatsdBuffer) {
 		if r := recover(); r != nil {
-			fmt.Println("Caught panic, flushing stats before throwing the panic again")
+			sb.Logger.Println("Caught panic, flushing stats before throwing the panic again")
 			sb.flush()
 			panic(r)
 		}
@@ -107,7 +111,7 @@ func (sb *StatsdBuffer) collector() {
 				sb.events[e.Key()] = e
 			}
 		case c := <-sb.closeChannel:
-			fmt.Println("Asked to terminate. Flushing stats before returning.")
+			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
 			c.reply <- sb.flush()
 			break
 		}
