@@ -96,6 +96,13 @@ func (c *StatsdClient) Gauge(stat string, value int64) error {
 	return c.send(stat, "+%d|g", value)
 }
 
+func (c *StatsdClient) FGauge(stat string, value float64) error {
+	if value < 0 {
+		return c.send(stat, "%f|g", value)
+	}
+	return c.send(stat, "+%f|g", value)
+}
+
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
 func (c *StatsdClient) Absolute(stat string, value int64) error {
 	return c.send(stat, "%d|a", value)
@@ -107,7 +114,7 @@ func (c *StatsdClient) Total(stat string, value int64) error {
 }
 
 // write a UDP packet with the statsd event
-func (c *StatsdClient) send(stat string, format string, value int64) error {
+func (c *StatsdClient) send(stat string, format string, value interface{}) error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
