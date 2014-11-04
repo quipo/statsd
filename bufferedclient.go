@@ -70,6 +70,11 @@ func (sb *StatsdBuffer) Gauge(stat string, value int64) error {
 	return nil
 }
 
+func (sb *StatsdBuffer) FGauge(stat string, value float64) error {
+	sb.eventChannel <- &event.FGauge{Name: stat, Value: value}
+	return nil
+}
+
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
 func (sb *StatsdBuffer) Absolute(stat string, value int64) error {
 	sb.eventChannel <- &event.Absolute{Name: stat, Values: []int64{value}}
