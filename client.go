@@ -11,12 +11,14 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-var hostname string
+var Hostname string
 
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
-		hostname = host
+		// remove all but the base hostname
+		host = strings.SplitN(host, ".", 2)[0]
+		Hostname = host
 	}
 }
 
@@ -118,7 +120,7 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	stat = strings.Replace(stat, "%HOST%", hostname, 1)
+	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
 	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
 	//fmt.Printf("SENDING %s%s:%s\n", c.prefix, stat, format)
 	_, err := fmt.Fprintf(c.conn, format, value)
