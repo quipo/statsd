@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -138,14 +139,19 @@ func (sb *StatsdBuffer) Close() (err error) {
 // This function is NOT thread-safe, so it must only be invoked synchronously
 // from within the collector() goroutine
 func (sb *StatsdBuffer) flush() (err error) {
+	var wg sync.WaitGroup
+	wg.Add(len(sb.events))
 	for k, v := range sb.events {
-		err = sb.statsd.SendEvent(v)
-		if nil != err {
-			fmt.Println(err)
-			return err
-		}
+		go func(e event.Event) {
+			err := sb.statsd.SendEvent(e)
+			if nil != err {
+				fmt.Println(err)
+			}
+			wg.Done()
+		}(v)
 		//fmt.Println("Sent", v.String())
 		delete(sb.events, k)
 	}
+	wg.Wait()
 	return nil
 }
