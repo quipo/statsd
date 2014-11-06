@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -113,13 +114,17 @@ func (sb *StatsdBuffer) collector() {
 			sb.flush()
 		case e := <-sb.eventChannel:
 			//fmt.Println("Received ", e.String())
-			if e2, ok := sb.events[e.Key()]; ok {
+			// convert %HOST# in key
+			k := strings.Replace(e.Key(), "%HOST%", Hostname, 1)
+			e.SetKey(k)
+
+			if e2, ok := sb.events[k]; ok {
 				//fmt.Println("Updating existing event")
 				e2.Update(e)
-				sb.events[e.Key()] = e2
+				sb.events[k] = e2
 			} else {
 				//fmt.Println("Adding new event")
-				sb.events[e.Key()] = e
+				sb.events[k] = e
 			}
 		case c := <-sb.closeChannel:
 			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")

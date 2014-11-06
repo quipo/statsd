@@ -34,6 +34,11 @@ func (e FGauge) Key() string {
 	return e.Name
 }
 
+// SetKey sets the name of this metric
+func (e *FGauge) SetKey(key string) {
+	e.Name = key
+}
+
 // Type returns an integer identifier for this type of metric
 func (e FGauge) Type() int {
 	return EventFGauge

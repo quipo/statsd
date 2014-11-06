@@ -20,4 +20,5 @@ type Event interface {
 	Update(e2 Event) error
 	String() string
 	Key() string
+	SetKey(string)
 }
