@@ -71,8 +71,18 @@ func (sb *StatsdBuffer) Gauge(stat string, value int64) error {
 	return nil
 }
 
+func (sb *StatsdBuffer) GaugeDelta(stat string, value int64) error {
+	sb.eventChannel <- &event.GaugeDelta{Name: stat, Value: value}
+	return nil
+}
+
 func (sb *StatsdBuffer) FGauge(stat string, value float64) error {
 	sb.eventChannel <- &event.FGauge{Name: stat, Value: value}
+	return nil
+}
+
+func (sb *StatsdBuffer) FGaugeDelta(stat string, value float64) error {
+	sb.eventChannel <- &event.FGaugeDelta{Name: stat, Value: value}
 	return nil
 }
 

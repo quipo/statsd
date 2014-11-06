@@ -65,6 +65,7 @@ func (c *StatsdClient) Close() error {
 }
 
 // See statsd data types here: http://statsd.readthedocs.org/en/latest/types.html
+// or also https://github.com/b/statsd_spec
 
 // Incr - Increment a counter metric. Often used to note a particular event
 func (c *StatsdClient) Incr(stat string, count int64) error {
@@ -95,12 +96,32 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 // first setting it to zero.
 func (c *StatsdClient) Gauge(stat string, value int64) error {
 	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%d|g", value)
+	}
+	return c.send(stat, "%d|g", value)
+}
+
+// GaugeDelta -- Send a change for a gauge
+func (c *StatsdClient) GaugeDelta(stat string, value int64) error {
+	// Gauge Deltas are always sent with a leading '+' or '-'. The '-' takes care of itself but the '+' must added by hand
+	if value < 0 {
 		return c.send(stat, "%d|g", value)
 	}
 	return c.send(stat, "+%d|g", value)
 }
 
+// FGauge -- Send a floating point value for a gauge
 func (c *StatsdClient) FGauge(stat string, value float64) error {
+	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%g|g", value)
+	}
+	return c.send(stat, "%g|g", value)
+}
+
+// FGaugeDelta -- Send a floating point change for a gauge
+func (c *StatsdClient) FGaugeDelta(stat string, value float64) error {
 	if value < 0 {
 		return c.send(stat, "%g|g", value)
 	}
@@ -112,7 +133,7 @@ func (c *StatsdClient) Absolute(stat string, value int64) error {
 	return c.send(stat, "%d|a", value)
 }
 
-// FAbsolute - Send absolute-valued metric (not averaged/aggregated)
+// FAbsolute - Send absolute-valued floating point metric (not averaged/aggregated)
 func (c *StatsdClient) FAbsolute(stat string, value float64) error {
 	return c.send(stat, "%g|a", value)
 }

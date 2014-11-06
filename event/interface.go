@@ -7,7 +7,9 @@ const (
 	EventAbsolute
 	EventTotal
 	EventGauge
+	EventGaugeDelta
 	EventFGauge
+	EventFGaugeDelta
 	EventFAbsolute
 )
 
