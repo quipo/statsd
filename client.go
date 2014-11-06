@@ -32,6 +32,8 @@ type StatsdClient struct {
 
 // NewStatsdClient - Factory
 func NewStatsdClient(addr string, prefix string) *StatsdClient {
+	// allow %HOST% in the prefix string
+	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	return &StatsdClient{
 		addr:   addr,
 		prefix: prefix,
