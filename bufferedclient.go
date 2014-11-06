@@ -81,6 +81,12 @@ func (sb *StatsdBuffer) Absolute(stat string, value int64) error {
 	return nil
 }
 
+// FAbsolute - Send absolute-valued metric (not averaged/aggregated)
+func (sb *StatsdBuffer) FAbsolute(stat string, value float64) error {
+	sb.eventChannel <- &event.FAbsolute{Name: stat, Values: []float64{value}}
+	return nil
+}
+
 // Total - Send a metric that is continously increasing, e.g. read operations since boot
 func (sb *StatsdBuffer) Total(stat string, value int64) error {
 	sb.eventChannel <- &event.Total{Name: stat, Value: value}
