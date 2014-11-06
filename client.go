@@ -65,6 +65,7 @@ func (c *StatsdClient) Close() error {
 }
 
 // See statsd data types here: http://statsd.readthedocs.org/en/latest/types.html
+// or also https://github.com/b/statsd_spec
 
 // Incr - Increment a counter metric. Often used to note a particular event
 func (c *StatsdClient) Incr(stat string, count int64) error {
@@ -95,12 +96,28 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 // first setting it to zero.
 func (c *StatsdClient) Gauge(stat string, value int64) error {
 	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%d|g", value)
+	}
+	return c.send(stat, "%d|g", value)
+}
+
+func (c *StatsdClient) FGauge(stat string, value float64) error {
+	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%g|g", value)
+	}
+	return c.send(stat, "%g|g", value)
+}
+
+func (c *StatsdClient) GaugeDelta(stat string, value int64) error {
+	if value < 0 {
 		return c.send(stat, "%d|g", value)
 	}
 	return c.send(stat, "+%d|g", value)
 }
 
-func (c *StatsdClient) FGauge(stat string, value float64) error {
+func (c *StatsdClient) FGaugeDelta(stat string, value float64) error {
 	if value < 0 {
 		return c.send(stat, "%g|g", value)
 	}
