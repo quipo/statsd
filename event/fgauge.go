@@ -26,7 +26,7 @@ func (e FGauge) Payload() interface{} {
 
 // Stats returns an array of StatsD events as they travel over UDP
 func (e FGauge) Stats() []string {
-	return []string{fmt.Sprintf("%s:%f|t", e.Name, e.Value)}
+	return []string{fmt.Sprintf("%s:%g|t", e.Name, e.Value)}
 }
 
 // Key returns the name of this metric
@@ -36,7 +36,7 @@ func (e FGauge) Key() string {
 
 // Type returns an integer identifier for this type of metric
 func (e FGauge) Type() int {
-	return EventGauge
+	return EventFGauge
 }
 
 // TypeString returns a name for this type of metric
@@ -46,5 +46,5 @@ func (e FGauge) TypeString() string {
 
 // String returns a debug-friendly representation of this metric
 func (e FGauge) String() string {
-	return fmt.Sprintf("{Type: %s, Key: %s, Value: %f}", e.TypeString(), e.Name, e.Value)
+	return fmt.Sprintf("{Type: %s, Key: %s, Value: %g}", e.TypeString(), e.Name, e.Value)
 }

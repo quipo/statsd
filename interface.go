@@ -9,4 +9,7 @@ type Statsd interface {
 	Gauge(stat string, value int64) error
 	Absolute(stat string, value int64) error
 	Total(stat string, value int64) error
+
+	FGauge(stat string, value float64) error
+	FAbsolute(stat string, value float64) error
 }

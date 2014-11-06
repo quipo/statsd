@@ -102,14 +102,19 @@ func (c *StatsdClient) Gauge(stat string, value int64) error {
 
 func (c *StatsdClient) FGauge(stat string, value float64) error {
 	if value < 0 {
-		return c.send(stat, "%f|g", value)
+		return c.send(stat, "%g|g", value)
 	}
-	return c.send(stat, "+%f|g", value)
+	return c.send(stat, "+%g|g", value)
 }
 
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
 func (c *StatsdClient) Absolute(stat string, value int64) error {
 	return c.send(stat, "%d|a", value)
+}
+
+// FAbsolute - Send absolute-valued metric (not averaged/aggregated)
+func (c *StatsdClient) FAbsolute(stat string, value float64) error {
+	return c.send(stat, "%g|a", value)
 }
 
 // Total - Send a metric that is continously increasing, e.g. read operations since boot
