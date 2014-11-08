@@ -26,7 +26,16 @@ func (e FGauge) Payload() interface{} {
 
 // Stats returns an array of StatsD events as they travel over UDP
 func (e FGauge) Stats() []string {
-	return []string{fmt.Sprintf("%s:%f|t", e.Name, e.Value)}
+	if e.Value < 0 {
+		// because a leading '+' or '-' in the value of a gauge denotes a delta, to send
+		// a negative gauge value we first set the gauge absolutely to 0, then send the
+		// negative value as a delta from 0 (that's just how the spec works :-)
+		return []string{
+			fmt.Sprintf("%s:%d|g", e.Name, 0),
+			fmt.Sprintf("%s:%g|g", e.Name, e.Value),
+		}
+	}
+	return []string{fmt.Sprintf("%s:%g|g", e.Name, e.Value)}
 }
 
 // Key returns the name of this metric
@@ -34,9 +43,14 @@ func (e FGauge) Key() string {
 	return e.Name
 }
 
+// SetKey sets the name of this metric
+func (e *FGauge) SetKey(key string) {
+	e.Name = key
+}
+
 // Type returns an integer identifier for this type of metric
 func (e FGauge) Type() int {
-	return EventGauge
+	return EventFGauge
 }
 
 // TypeString returns a name for this type of metric
@@ -46,5 +60,5 @@ func (e FGauge) TypeString() string {
 
 // String returns a debug-friendly representation of this metric
 func (e FGauge) String() string {
-	return fmt.Sprintf("{Type: %s, Key: %s, Value: %f}", e.TypeString(), e.Name, e.Value)
+	return fmt.Sprintf("{Type: %s, Key: %s, Value: %g}", e.TypeString(), e.Name, e.Value)
 }

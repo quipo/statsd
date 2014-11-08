@@ -4,55 +4,55 @@ import "fmt"
 
 // Absolute is a metric that is not averaged/aggregated.
 // We keep each value distinct and then we flush them all individually.
-type Absolute struct {
+type FAbsolute struct {
 	Name   string
-	Values []int64
+	Values []float64
 }
 
 // Update the event with metrics coming from a new one of the same type and with the same key
-func (e *Absolute) Update(e2 Event) error {
+func (e *FAbsolute) Update(e2 Event) error {
 	if e.Type() != e2.Type() {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
-	e.Values = append(e.Values, e2.Payload().([]int64)...)
+	e.Values = append(e.Values, e2.Payload().([]float64)...)
 	return nil
 }
 
 // Payload returns the aggregated value for this event
-func (e Absolute) Payload() interface{} {
+func (e FAbsolute) Payload() interface{} {
 	return e.Values
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e Absolute) Stats() []string {
+func (e FAbsolute) Stats() []string {
 	ret := make([]string, len(e.Values))
 	for v := range e.Values {
-		ret = append(ret, fmt.Sprintf("%s:%d|a", e.Name, v))
+		ret = append(ret, fmt.Sprintf("%s:%g|a", e.Name, v))
 	}
 	return ret
 }
 
 // Key returns the name of this metric
-func (e Absolute) Key() string {
+func (e FAbsolute) Key() string {
 	return e.Name
 }
 
 // SetKey sets the name of this metric
-func (e *Absolute) SetKey(key string) {
+func (e *FAbsolute) SetKey(key string) {
 	e.Name = key
 }
 
 // Type returns an integer identifier for this type of metric
-func (e Absolute) Type() int {
-	return EventAbsolute
+func (e FAbsolute) Type() int {
+	return EventFAbsolute
 }
 
 // TypeString returns a name for this type of metric
-func (e Absolute) TypeString() string {
-	return "Absolute"
+func (e FAbsolute) TypeString() string {
+	return "FAbsolute"
 }
 
 // String returns a debug-friendly representation of this metric
-func (e Absolute) String() string {
+func (e FAbsolute) String() string {
 	return fmt.Sprintf("{Type: %s, Key: %s, Values: %v}", e.TypeString(), e.Name, e.Values)
 }
