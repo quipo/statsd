@@ -53,12 +53,12 @@ func (e PrecisionTiming) Key() string {
 
 // Type returns an integer identifier for this type of metric
 func (e PrecisionTiming) Type() int {
-	return EventTiming
+	return EventPrecisionTiming
 }
 
 // TypeString returns a name for this type of metric
 func (e PrecisionTiming) TypeString() string {
-	return "Timing"
+	return "PrecisionTiming"
 }
 
 // String returns a debug-friendly representation of this metric
