@@ -11,6 +11,7 @@ const (
 	EventFGauge
 	EventFGaugeDelta
 	EventFAbsolute
+	EventPrecisionTiming
 )
 
 // Event is an interface to a generic StatsD event, used by the buffered client collator
