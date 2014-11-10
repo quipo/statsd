@@ -7,6 +7,7 @@ const (
 	EventAbsolute
 	EventTotal
 	EventGauge
+	EventPrecisionTiming
 )
 
 // Event is an interface to a generic StatsD event, used by the buffered client collator
