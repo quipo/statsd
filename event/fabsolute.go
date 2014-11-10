@@ -25,7 +25,7 @@ func (e FAbsolute) Payload() interface{} {
 
 // Stats returns an array of StatsD events as they travel over UDP
 func (e FAbsolute) Stats() []string {
-	ret := make([]string, len(e.Values))
+	ret := make([]string, 0, len(e.Values))
 	for v := range e.Values {
 		ret = append(ret, fmt.Sprintf("%s:%g|a", e.Name, v))
 	}
