@@ -11,15 +11,11 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
+// note Hostname is exported so clients can set it to something different than the default
 var Hostname string
 
 func init() {
 	host, err := os.Hostname()
-	if nil == err {
-		// remove all but the base hostname
-		host = strings.SplitN(host, ".", 2)[0]
-		Hostname = host
-	}
 }
 
 // StatsdClient is a client library to send events to StatsD
