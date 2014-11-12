@@ -16,6 +16,9 @@ var Hostname string
 
 func init() {
 	host, err := os.Hostname()
+	if nil == err {
+		Hostname = host
+	}
 }
 
 // StatsdClient is a client library to send events to StatsD
