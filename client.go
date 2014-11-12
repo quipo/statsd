@@ -115,12 +115,16 @@ func (c *StatsdClient) Total(stat string, value int64) error {
 
 // write a UDP packet with the statsd event
 func (c *StatsdClient) send(stat string, format string, value int64) error {
+	err := c.CreateSocket()
+	if err != nil {
+		return err
+	}
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	stat = strings.Replace(stat, "%HOST%", hostname, 1)
 	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
-	_, err := fmt.Fprintf(c.conn, format, value)
+	_, err = fmt.Fprintf(c.conn, format, value)
 	return err
 }
 
