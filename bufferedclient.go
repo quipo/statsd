@@ -132,7 +132,7 @@ func (sb *StatsdBuffer) collector() {
 			sb.flush()
 		case e := <-sb.eventChannel:
 			//fmt.Println("Received ", e.String())
-			// convert %HOST# in key
+			// convert %HOST% in key
 			k := strings.Replace(e.Key(), "%HOST%", Hostname, 1)
 			e.SetKey(k)
 
