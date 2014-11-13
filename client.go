@@ -11,12 +11,13 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-var hostname string
+// note Hostname is exported so clients can set it to something different than the default
+var Hostname string
 
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
-		hostname = host
+		Hostname = host
 	}
 }
 
@@ -30,6 +31,8 @@ type StatsdClient struct {
 
 // NewStatsdClient - Factory
 func NewStatsdClient(addr string, prefix string) *StatsdClient {
+	// allow %HOST% in the prefix string
+	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	return &StatsdClient{
 		addr:   addr,
 		prefix: prefix,
@@ -61,6 +64,7 @@ func (c *StatsdClient) Close() error {
 }
 
 // See statsd data types here: http://statsd.readthedocs.org/en/latest/types.html
+// or also https://github.com/b/statsd_spec
 
 // Incr - Increment a counter metric. Often used to note a particular event
 func (c *StatsdClient) Incr(stat string, count int64) error {
@@ -98,14 +102,46 @@ func (c *StatsdClient) PrecisionTiming(stat string, delta time.Duration) error {
 // first setting it to zero.
 func (c *StatsdClient) Gauge(stat string, value int64) error {
 	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%d|g", value)
+	}
+	return c.send(stat, "%d|g", value)
+}
+
+// GaugeDelta -- Send a change for a gauge
+func (c *StatsdClient) GaugeDelta(stat string, value int64) error {
+	// Gauge Deltas are always sent with a leading '+' or '-'. The '-' takes care of itself but the '+' must added by hand
+	if value < 0 {
 		return c.send(stat, "%d|g", value)
 	}
 	return c.send(stat, "+%d|g", value)
 }
 
+// FGauge -- Send a floating point value for a gauge
+func (c *StatsdClient) FGauge(stat string, value float64) error {
+	if value < 0 {
+		c.send(stat, "%d|g", 0)
+		return c.send(stat, "%g|g", value)
+	}
+	return c.send(stat, "%g|g", value)
+}
+
+// FGaugeDelta -- Send a floating point change for a gauge
+func (c *StatsdClient) FGaugeDelta(stat string, value float64) error {
+	if value < 0 {
+		return c.send(stat, "%g|g", value)
+	}
+	return c.send(stat, "+%g|g", value)
+}
+
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
 func (c *StatsdClient) Absolute(stat string, value int64) error {
 	return c.send(stat, "%d|a", value)
+}
+
+// FAbsolute - Send absolute-valued floating point metric (not averaged/aggregated)
+func (c *StatsdClient) FAbsolute(stat string, value float64) error {
+	return c.send(stat, "%g|a", value)
 }
 
 // Total - Send a metric that is continously increasing, e.g. read operations since boot
@@ -114,11 +150,11 @@ func (c *StatsdClient) Total(stat string, value int64) error {
 }
 
 // write a UDP packet with the statsd event
-func (c *StatsdClient) send(stat string, format string, value int64) error {
+func (c *StatsdClient) send(stat string, format string, value interface{}) error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	stat = strings.Replace(stat, "%HOST%", hostname, 1)
+	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
 	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
 	_, err := fmt.Fprintf(c.conn, format, value)
 	return err

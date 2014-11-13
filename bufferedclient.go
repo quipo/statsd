@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,9 +79,30 @@ func (sb *StatsdBuffer) Gauge(stat string, value int64) error {
 	return nil
 }
 
+func (sb *StatsdBuffer) GaugeDelta(stat string, value int64) error {
+	sb.eventChannel <- &event.GaugeDelta{Name: stat, Value: value}
+	return nil
+}
+
+func (sb *StatsdBuffer) FGauge(stat string, value float64) error {
+	sb.eventChannel <- &event.FGauge{Name: stat, Value: value}
+	return nil
+}
+
+func (sb *StatsdBuffer) FGaugeDelta(stat string, value float64) error {
+	sb.eventChannel <- &event.FGaugeDelta{Name: stat, Value: value}
+	return nil
+}
+
 // Absolute - Send absolute-valued metric (not averaged/aggregated)
 func (sb *StatsdBuffer) Absolute(stat string, value int64) error {
 	sb.eventChannel <- &event.Absolute{Name: stat, Values: []int64{value}}
+	return nil
+}
+
+// FAbsolute - Send absolute-valued metric (not averaged/aggregated)
+func (sb *StatsdBuffer) FAbsolute(stat string, value float64) error {
+	sb.eventChannel <- &event.FAbsolute{Name: stat, Values: []float64{value}}
 	return nil
 }
 
@@ -110,13 +132,17 @@ func (sb *StatsdBuffer) collector() {
 			sb.flush()
 		case e := <-sb.eventChannel:
 			//fmt.Println("Received ", e.String())
-			if e2, ok := sb.events[e.Key()]; ok {
+			// convert %HOST% in key
+			k := strings.Replace(e.Key(), "%HOST%", Hostname, 1)
+			e.SetKey(k)
+
+			if e2, ok := sb.events[k]; ok {
 				//fmt.Println("Updating existing event")
 				e2.Update(e)
-				sb.events[e.Key()] = e2
+				sb.events[k] = e2
 			} else {
 				//fmt.Println("Adding new event")
-				sb.events[e.Key()] = e
+				sb.events[k] = e
 			}
 		case c := <-sb.closeChannel:
 			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")

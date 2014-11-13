@@ -7,6 +7,10 @@ const (
 	EventAbsolute
 	EventTotal
 	EventGauge
+	EventGaugeDelta
+	EventFGauge
+	EventFGaugeDelta
+	EventFAbsolute
 	EventPrecisionTiming
 )
 
@@ -19,4 +23,5 @@ type Event interface {
 	Update(e2 Event) error
 	String() string
 	Key() string
+	SetKey(string)
 }
