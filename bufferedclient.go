@@ -42,6 +42,11 @@ func NewStatsdBuffer(interval time.Duration, client *StatsdClient) *StatsdBuffer
 	return sb
 }
 
+// CreateSocket creates a UDP connection to a StatsD server
+func (sb *StatsdBuffer) CreateSocket() error {
+	return sb.statsd.CreateSocket()
+}
+
 // Incr - Increment a counter metric. Often used to note a particular event
 func (sb *StatsdBuffer) Incr(stat string, count int64) error {
 	if 0 != count {
