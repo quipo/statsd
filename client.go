@@ -47,7 +47,7 @@ func (c *StatsdClient) String() string {
 
 // CreateSocket creates a UDP connection to a StatsD server
 func (c *StatsdClient) CreateSocket() error {
-	conn, err := net.DialTimeout("udp", c.addr, time.Second)
+	conn, err := net.DialTimeout("udp", c.addr, 5*time.Second)
 	if err != nil {
 		return err
 	}
