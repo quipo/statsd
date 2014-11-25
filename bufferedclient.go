@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -177,19 +176,24 @@ func (sb *StatsdBuffer) Close() (err error) {
 // This function is NOT thread-safe, so it must only be invoked synchronously
 // from within the collector() goroutine
 func (sb *StatsdBuffer) flush() (err error) {
-	var wg sync.WaitGroup
-	wg.Add(len(sb.events))
-	for k, v := range sb.events {
-		go func(e event.Event) {
+	// make copy into a new variable, and reset the main variable
+	events_copy := sb.events
+	sb.events = make(map[string]event.Event, 0)
+
+	go func(events map[string]event.Event) {
+		err := sb.statsd.CreateSocket()
+		if nil != err {
+			sb.Logger.Println("Error establishing UDP connection for sending statsd events:", err)
+		}
+		for k, e := range events {
 			err := sb.statsd.SendEvent(e)
 			if nil != err {
 				fmt.Println(err)
 			}
-			wg.Done()
-		}(v)
-		//fmt.Println("Sent", v.String())
-		delete(sb.events, k)
-	}
-	wg.Wait()
+			//fmt.Println("Sent", v.String())
+			delete(sb.events, k)
+		}
+	}(events_copy)
+
 	return nil
 }
