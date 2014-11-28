@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -132,20 +131,20 @@ func (sb *StatsdBuffer) collector() {
 	for {
 		select {
 		case <-ticker.C:
-			//fmt.Println("Flushing stats")
+			//sb.Logger.Println("Flushing stats")
 			sb.flush()
 		case e := <-sb.eventChannel:
-			//fmt.Println("Received ", e.String())
+			//sb.Logger.Println("Received ", e.String())
 			// convert %HOST% in key
 			k := strings.Replace(e.Key(), "%HOST%", Hostname, 1)
 			e.SetKey(k)
 
 			if e2, ok := sb.events[k]; ok {
-				//fmt.Println("Updating existing event")
+				//sb.Logger.Println("Updating existing event")
 				e2.Update(e)
 				sb.events[k] = e2
 			} else {
-				//fmt.Println("Adding new event")
+				//sb.Logger.Println("Adding new event")
 				sb.events[k] = e
 			}
 		case c := <-sb.closeChannel:
@@ -176,24 +175,22 @@ func (sb *StatsdBuffer) Close() (err error) {
 // This function is NOT thread-safe, so it must only be invoked synchronously
 // from within the collector() goroutine
 func (sb *StatsdBuffer) flush() (err error) {
-	// make copy into a new variable, and reset the main variable
-	events_copy := sb.events
-	sb.events = make(map[string]event.Event, 0)
-
-	go func(events map[string]event.Event) {
-		err := sb.statsd.CreateSocket()
+	n := len(sb.events)
+	if n == 0 {
+		return nil
+	}
+	err = sb.statsd.CreateSocket()
+	if nil != err {
+		sb.Logger.Println("Error establishing UDP connection for sending statsd events:", err)
+	}
+	for k, v := range sb.events {
+		err := sb.statsd.SendEvent(v)
 		if nil != err {
-			sb.Logger.Println("Error establishing UDP connection for sending statsd events:", err)
+			sb.Logger.Println(err)
 		}
-		for k, e := range events {
-			err := sb.statsd.SendEvent(e)
-			if nil != err {
-				fmt.Println(err)
-			}
-			//fmt.Println("Sent", v.String())
-			delete(sb.events, k)
-		}
-	}(events_copy)
+		//sb.Logger.Println("Sent", v.String())
+		delete(sb.events, k)
+	}
 
 	return nil
 }
