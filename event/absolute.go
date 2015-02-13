@@ -18,6 +18,11 @@ func (e *Absolute) Update(e2 Event) error {
 	return nil
 }
 
+//Reset the value
+func (e *Absolute) Reset() {
+	e.Values = []int64{}
+}
+
 // Payload returns the aggregated value for this event
 func (e Absolute) Payload() interface{} {
 	return e.Values

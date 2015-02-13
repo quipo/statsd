@@ -24,6 +24,11 @@ func (e FGaugeDelta) Payload() interface{} {
 	return e.Value
 }
 
+//Reset the value
+func (e *FGaugeDelta) Reset() {
+	e.Value = 0.0
+}
+
 // Stats returns an array of StatsD events as they travel over UDP
 func (e FGaugeDelta) Stats() []string {
 	if e.Value < 0 {

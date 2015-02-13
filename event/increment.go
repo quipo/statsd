@@ -17,6 +17,11 @@ func (e *Increment) Update(e2 Event) error {
 	return nil
 }
 
+//Reset the value
+func (e *Increment) Reset() {
+	e.Value = 0
+}
+
 // Payload returns the aggregated value for this event
 func (e Increment) Payload() interface{} {
 	return e.Value

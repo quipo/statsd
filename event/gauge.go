@@ -24,6 +24,11 @@ func (e Gauge) Payload() interface{} {
 	return e.Value
 }
 
+//Reset the value GAUGES TO NOT RESET
+func (e *Gauge) Reset() {
+
+}
+
 // Stats returns an array of StatsD events as they travel over UDP
 func (e Gauge) Stats() []string {
 	if e.Value < 0 {

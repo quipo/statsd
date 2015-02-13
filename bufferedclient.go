@@ -1,12 +1,11 @@
 package statsd
 
 import (
+	"./event"
 	"log"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/quipo/statsd/event"
 )
 
 // request to close the buffered statsd collector
@@ -18,23 +17,27 @@ type closeRequest struct {
 // flushing aggregates to StatsD, useful if the frequency of events is extremely high
 // and sampling is not desirable
 type StatsdBuffer struct {
-	statsd        *StatsdClient
-	flushInterval time.Duration
-	eventChannel  chan event.Event
-	events        map[string]event.Event
-	closeChannel  chan closeRequest
-	Logger        *log.Logger
+	statsd            *StatsdClient
+	flushInterval     time.Duration
+	eventChannel      chan event.Event
+	events            map[string]event.Event
+	closeChannel      chan closeRequest
+	Logger            *log.Logger
+	RetainKeys        bool
+	ReCycleConnection bool //close the Statsd connection each time after send (helps with picking up new hosts)
 }
 
 // NewStatsdBuffer Factory
 func NewStatsdBuffer(interval time.Duration, client *StatsdClient) *StatsdBuffer {
 	sb := &StatsdBuffer{
-		flushInterval: interval,
-		statsd:        client,
-		eventChannel:  make(chan event.Event, 100),
-		events:        make(map[string]event.Event, 0),
-		closeChannel:  make(chan closeRequest, 0),
-		Logger:        log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
+		flushInterval:     interval,
+		statsd:            client,
+		eventChannel:      make(chan event.Event, 100),
+		events:            make(map[string]event.Event, 0),
+		closeChannel:      make(chan closeRequest, 0),
+		Logger:            log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
+		RetainKeys:        false,
+		ReCycleConnection: true,
 	}
 	go sb.collector()
 	return sb
@@ -149,7 +152,7 @@ func (sb *StatsdBuffer) collector() {
 			}
 		case c := <-sb.closeChannel:
 			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
-			c.reply <- sb.flush()
+		c.reply <- sb.flush()
 			break
 		}
 	}
@@ -180,16 +183,42 @@ func (sb *StatsdBuffer) flush() (err error) {
 		return nil
 	}
 	err = sb.statsd.CreateSocket()
+
+	if sb.ReCycleConnection {
+		defer sb.statsd.Close()
+	}
+
 	if nil != err {
 		sb.Logger.Println("Error establishing UDP connection for sending statsd events:", err)
 	}
+
+	//buffer stats in 512k blocks save some frames
+	var buffersize = 512
+	var out_string = ""
+
 	for k, v := range sb.events {
-		err := sb.statsd.SendEvent(v)
+
+		if len([]byte(out_string)) >= buffersize {
+			sb.statsd.SendRaw(out_string)
+			out_string = ""
+		}
+		str, err := sb.statsd.EventStatsdString(v)
 		if nil != err {
 			sb.Logger.Println(err)
+			continue
 		}
-		//sb.Logger.Println("Sent", v.String())
-		delete(sb.events, k)
+		out_string += str
+
+		// if we are "retaining" the names (so that we can send "0"s do NOT delete
+		if sb.RetainKeys {
+			sb.events[k].Reset()
+		} else {
+			delete(sb.events, k)
+		}
+	}
+
+	if len(out_string) > 0 {
+		sb.statsd.SendRaw(out_string)
 	}
 
 	return nil

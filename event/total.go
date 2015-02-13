@@ -17,6 +17,11 @@ func (e *Total) Update(e2 Event) error {
 	return nil
 }
 
+//Reset the value
+func (e *Total) Reset() {
+	e.Value = 0
+}
+
 // Payload returns the aggregated value for this event
 func (e Total) Payload() interface{} {
 	return e.Value
