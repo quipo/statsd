@@ -19,6 +19,10 @@ func (e *FGauge) Update(e2 Event) error {
 	return nil
 }
 
+//Reset the value GAUGES TO NOT RESET
+func (e *FGauge) Reset() {
+}
+
 // Payload returns the aggregated value for this event
 func (e FGauge) Payload() interface{} {
 	return e.Value

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/quipo/statsd/event"
+	event "./event"
 )
 
 // note Hostname is exported so clients can set it to something different than the default
@@ -158,6 +158,30 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
 	_, err := fmt.Fprintf(c.conn, format, value)
 	return err
+}
+
+func (c *StatsdClient) SendRaw(buffer string) error {
+	if c.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	//log.Printf("SENDING EVENT %s", buffer)
+
+	_, err := fmt.Fprintf(c.conn, buffer)
+	return err
+
+}
+
+func (c *StatsdClient) EventStatsdString(e event.Event) (string, error) {
+	var out_str = ""
+
+	for _, stat := range e.Stats() {
+		str := fmt.Sprintf("%s%s", c.prefix, stat)
+		if len(str) > 0 {
+			out_str += str + "\n"
+		}
+	}
+	return out_str, nil
+
 }
 
 // SendEvent - Sends stats from an event object

@@ -24,4 +24,5 @@ type Event interface {
 	String() string
 	Key() string
 	SetKey(string)
+	Reset()
 }

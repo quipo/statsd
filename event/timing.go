@@ -1,14 +1,16 @@
 package event
 
 import "fmt"
+import "math"
 
 // Timing keeps min/max/avg information about a timer over a certain interval
 type Timing struct {
-	Name  string
-	Min   int64
-	Max   int64
-	Value int64
-	Count int64
+	Name   string
+	Min    int64
+	Max    int64
+	Value  int64
+	Values []int64
+	Count  int64
 }
 
 // NewTiming is a factory for a Timing event, setting the Count to 1 to prevent div_by_0 errors
@@ -21,30 +23,49 @@ func (e *Timing) Update(e2 Event) error {
 	if e.Type() != e2.Type() {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
-	p := e2.Payload().(map[string]int64)
-	e.Count += p["cnt"]
-	e.Value += p["val"]
-	e.Min = minInt64(e.Min, p["min"])
-	e.Max = maxInt64(e.Max, p["max"])
+	p := e2.Payload().(map[string]interface{})
+	e.Count += p["cnt"].(int64)
+	e.Value += p["val"].(int64)
+	e.Min = minInt64(e.Min, p["min"].(int64))
+	e.Max = maxInt64(e.Max, p["max"].(int64))
+	e.Values = append(e.Values, p["val"].(int64))
 	return nil
+}
+
+//Reset the value
+func (e *Timing) Reset() {
+	e.Value = 0
+	e.Count = 1
+	e.Min = 0
+	e.Max = 0
+	e.Values = []int64{}
 }
 
 // Payload returns the aggregated value for this event
 func (e Timing) Payload() interface{} {
-	return map[string]int64{
-		"min": e.Min,
-		"max": e.Max,
-		"val": e.Value,
-		"cnt": e.Count,
+	return map[string]interface{}{
+		"min":  e.Min,
+		"max":  e.Max,
+		"val":  e.Value,
+		"cnt":  e.Count,
+		"vals": e.Values,
 	}
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
 func (e Timing) Stats() []string {
+	std := float64(0)
+	avg := float64(e.Value / e.Count)
+	for _, v := range e.Values {
+		std += math.Pow((float64(v) - avg), 2.0)
+	}
+	std = math.Sqrt(std / float64(e.Count))
 	return []string{
-		fmt.Sprintf("%s.avg:%d|a", e.Name, int64(e.Value/e.Count)), // make sure e.Count != 0
+		fmt.Sprintf("%s.count:%d|a", e.Name, int64(e.Count)),
+		fmt.Sprintf("%s.avg:%d|a", e.Name, int64(avg)), // make sure e.Count != 0
 		fmt.Sprintf("%s.min:%d|a", e.Name, e.Min),
 		fmt.Sprintf("%s.max:%d|a", e.Name, e.Max),
+		fmt.Sprintf("%s.std:%d|a", e.Name, int64(std)),
 	}
 }
 

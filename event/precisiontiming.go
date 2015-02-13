@@ -32,6 +32,14 @@ func (e *PrecisionTiming) Update(e2 Event) error {
 	return nil
 }
 
+//Reset the value
+func (e *PrecisionTiming) Reset() {
+	e.Value = 0
+	e.Count = 1
+	e.Min = time.Duration(0)
+	e.Max = time.Duration(0)
+}
+
 // Payload returns the aggregated value for this event
 func (e PrecisionTiming) Payload() interface{} {
 	return e
@@ -40,9 +48,10 @@ func (e PrecisionTiming) Payload() interface{} {
 // Stats returns an array of StatsD events as they travel over UDP
 func (e PrecisionTiming) Stats() []string {
 	return []string{
+		fmt.Sprintf("%s.count:%d|a", e.Name, int64(e.Count)),
 		fmt.Sprintf("%s.avg:%.6f|a", e.Name, float64(int64(e.Value)/e.Count)), // make sure e.Count != 0
-		fmt.Sprintf("%s.min:%.6f|a", e.Name, e.Min),
-		fmt.Sprintf("%s.max:%.6f|a", e.Name, e.Max),
+		fmt.Sprintf("%s.min:%.6f|a", e.Name, float64(e.Min)),
+		fmt.Sprintf("%s.max:%.6f|a", e.Name, float64(e.Max)),
 	}
 }
 
