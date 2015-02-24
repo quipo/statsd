@@ -2,7 +2,7 @@ package event
 
 import "fmt"
 
-// Absolute is a metric that is not averaged/aggregated.
+// FAbsolute is a metric that is not averaged/aggregated.
 // We keep each value distinct and then we flush them all individually.
 type FAbsolute struct {
 	Name   string
