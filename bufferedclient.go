@@ -9,6 +9,10 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
+type Logger interface {
+  Println(v ...interface{})
+}
+
 // request to close the buffered statsd collector
 type closeRequest struct {
 	reply chan error
@@ -23,7 +27,7 @@ type StatsdBuffer struct {
 	eventChannel  chan event.Event
 	events        map[string]event.Event
 	closeChannel  chan closeRequest
-	Logger        *log.Logger
+	Logger        Logger
 }
 
 // NewStatsdBuffer Factory
