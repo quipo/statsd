@@ -9,10 +9,6 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-type Logger interface {
-  Println(v ...interface{})
-}
-
 // request to close the buffered statsd collector
 type closeRequest struct {
 	reply chan error

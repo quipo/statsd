@@ -11,6 +11,11 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
+// Logger interface compatible with log.Logger
+type Logger interface {
+	Println(v ...interface{})
+}
+
 // note Hostname is exported so clients can set it to something different than the default
 var Hostname string
 
@@ -26,7 +31,7 @@ type StatsdClient struct {
 	conn   net.Conn
 	addr   string
 	prefix string
-	Logger *log.Logger
+	Logger Logger
 }
 
 // NewStatsdClient - Factory
