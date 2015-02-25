@@ -150,7 +150,7 @@ func (sb *StatsdBuffer) collector() {
 		case c := <-sb.closeChannel:
 			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
 			c.reply <- sb.flush()
-			break
+			return
 		}
 	}
 }
