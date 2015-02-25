@@ -23,7 +23,7 @@ type StatsdBuffer struct {
 	eventChannel  chan event.Event
 	events        map[string]event.Event
 	closeChannel  chan closeRequest
-	Logger        *log.Logger
+	Logger        Logger
 }
 
 // NewStatsdBuffer Factory
@@ -82,16 +82,19 @@ func (sb *StatsdBuffer) Gauge(stat string, value int64) error {
 	return nil
 }
 
+// GaugeDelta records a delta from the previous value (as int64)
 func (sb *StatsdBuffer) GaugeDelta(stat string, value int64) error {
 	sb.eventChannel <- &event.GaugeDelta{Name: stat, Value: value}
 	return nil
 }
 
+// FGauge is a Gauge working with float64 values
 func (sb *StatsdBuffer) FGauge(stat string, value float64) error {
 	sb.eventChannel <- &event.FGauge{Name: stat, Value: value}
 	return nil
 }
 
+// FGaugeDelta records a delta from the previous value (as float64)
 func (sb *StatsdBuffer) FGaugeDelta(stat string, value float64) error {
 	sb.eventChannel <- &event.FGaugeDelta{Name: stat, Value: value}
 	return nil
@@ -150,7 +153,7 @@ func (sb *StatsdBuffer) collector() {
 		case c := <-sb.closeChannel:
 			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
 			c.reply <- sb.flush()
-			break
+			return
 		}
 	}
 }

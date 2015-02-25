@@ -2,7 +2,7 @@ package event
 
 import "fmt"
 
-// Absolute is a metric that is not averaged/aggregated.
+// FAbsolute is a metric that is not averaged/aggregated.
 // We keep each value distinct and then we flush them all individually.
 type FAbsolute struct {
 	Name   string
@@ -26,7 +26,7 @@ func (e FAbsolute) Payload() interface{} {
 // Stats returns an array of StatsD events as they travel over UDP
 func (e FAbsolute) Stats() []string {
 	ret := make([]string, 0, len(e.Values))
-	for v := range e.Values {
+	for _, v := range e.Values {
 		ret = append(ret, fmt.Sprintf("%s:%g|a", e.Name, v))
 	}
 	return ret
