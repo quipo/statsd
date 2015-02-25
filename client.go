@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+	"appengine/socket"
 	"github.com/quipo/statsd/event"
 )
 
@@ -23,20 +25,25 @@ func init() {
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn   net.Conn
-	addr   string
-	prefix string
-	Logger *log.Logger
+	conn       net.Conn
+	addr       string
+	prefix     string
+	Logger     *log.Logger
+	c          appengine.Context
+	ip_address string
+	port	   string
 }
 
 // NewStatsdClient - Factory
-func NewStatsdClient(addr string, prefix string) *StatsdClient {
+func NewStatsdClient(c appengine.Context, addr string, port string, prefix string) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	return &StatsdClient{
 		addr:   addr,
 		prefix: prefix,
 		Logger: log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		c:      c,
+		port:	port,
 	}
 }
 
@@ -47,13 +54,18 @@ func (c *StatsdClient) String() string {
 
 // CreateSocket creates a UDP connection to a StatsD server
 func (c *StatsdClient) CreateSocket() error {
-	conn, err := net.DialTimeout("udp", c.addr, 5*time.Second)
+	if c.ip_address == "" {
+		host_ip_address, _ := socket.LookupIP(c.c, c.addr)
+		c.ip_address = host_ip_address[0].String() + c.port
+	}
+	conn, err := net.DialTimeout("udp", c.ip_address, 5*time.Second)
 	if err != nil {
 		return err
 	}
 	c.conn = conn
 	return nil
 }
+
 
 // Close the UDP connection
 func (c *StatsdClient) Close() error {
