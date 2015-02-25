@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/quipo/statsd/event"
+	"github.com/fuj/statsd/event"
 )
 
 // Logger interface compatible with log.Logger
