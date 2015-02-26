@@ -40,10 +40,15 @@ func (e PrecisionTiming) Payload() interface{} {
 // Stats returns an array of StatsD events as they travel over UDP
 func (e PrecisionTiming) Stats() []string {
 	return []string{
-		fmt.Sprintf("%s.avg:%.6f|a", e.Name, float64(int64(e.Value)/e.Count)), // make sure e.Count != 0
-		fmt.Sprintf("%s.min:%.6f|a", e.Name, e.Min),
-		fmt.Sprintf("%s.max:%.6f|a", e.Name, e.Max),
+		fmt.Sprintf("%s.avg:%.6f|ms", e.Name, float64(int64(e.Value)/e.Count)/1000000), // make sure e.Count != 0
+		fmt.Sprintf("%s.min:%.6f|ms", e.Name, e.durationToMs(e.Min)),
+		fmt.Sprintf("%s.max:%.6f|ms", e.Name, e.durationToMs(e.Max)),
 	}
+}
+
+// durationToMs converts time.Duration into the corresponding value in milliseconds
+func (e PrecisionTiming) durationToMs(x time.Duration) float64 {
+	return float64(x) / float64(time.Millisecond)
 }
 
 // Key returns the name of this metric
