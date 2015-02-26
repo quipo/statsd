@@ -42,9 +42,9 @@ func (e Timing) Payload() interface{} {
 // Stats returns an array of StatsD events as they travel over UDP
 func (e Timing) Stats() []string {
 	return []string{
-		fmt.Sprintf("%s.avg:%d|a", e.Name, int64(e.Value/e.Count)), // make sure e.Count != 0
-		fmt.Sprintf("%s.min:%d|a", e.Name, e.Min),
-		fmt.Sprintf("%s.max:%d|a", e.Name, e.Max),
+		fmt.Sprintf("%s.avg:%d|ms", e.Name, int64(e.Value/e.Count)), // make sure e.Count != 0
+		fmt.Sprintf("%s.min:%d|ms", e.Name, e.Min),
+		fmt.Sprintf("%s.max:%d|ms", e.Name, e.Max),
 	}
 }
 
