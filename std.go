@@ -5,7 +5,7 @@ import "sync"
 var std Statsd
 var mu sync.Mutex
 
-func Init() {
+func init() {
 	std = &NoopClient{}
 }
 
