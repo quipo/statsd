@@ -6,7 +6,7 @@ var std Statsd
 var mu sync.Mutex
 
 func init() {
-	std = &NoopClient{}
+	Unconfigure()
 }
 
 // Configure creates a global StatsD client.
@@ -23,6 +23,12 @@ func Configure(host string, prefix string) error {
 
 	std = client
 	return nil
+}
+
+// Unconfigure resets the global StatsD client to its default state, which is
+// to silently drop all events.
+func Unconfigure() {
+	std = &NoopClient{}
 }
 
 // These functions write to the global StatsD client if one has been configured,
