@@ -8,7 +8,7 @@ func TestConfigure(t *testing.T) {
 
 	// assert that global is a noop client
 	_, ok := std.(*NoopClient)
-	if !ok { 
+	if !ok {
 		t.Errorf("expected std to be a NoopClient, got a %#v", std)
 	}
 
