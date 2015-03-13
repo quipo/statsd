@@ -1,4 +1,4 @@
-// +build !appengine
+// +build appengine
 
 package statsd
 
@@ -31,13 +31,12 @@ type StatsdBuffer struct {
 // NewStatsdBuffer Factory
 func NewStatsdBuffer(client *StatsdClient) *StatsdBuffer {
 	sb := &StatsdBuffer{
-		flushInterval: interval,
-		statsd:        client,
-		eventChannel:  make(chan event.Event, 100),
-		events:        make(map[string]event.Event, 0),
-		closeChannel:  make(chan closeRequest, 0),
-		flushChannel:  make(chan bool, 1),
-		Logger:        log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
+		statsd:       client,
+		eventChannel: make(chan event.Event, 100),
+		events:       make(map[string]event.Event, 0),
+		closeChannel: make(chan closeRequest, 0),
+		flushChannel: make(chan bool, 1),
+		Logger:       log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
 	}
 	go sb.collector()
 	return sb
@@ -196,4 +195,8 @@ func (sb *StatsdBuffer) flush() (err error) {
 	}
 
 	return nil
+}
+
+func (sb *StatsdBuffer) SendData() {
+	sb.flushChannel <- true
 }
