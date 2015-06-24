@@ -28,10 +28,11 @@ func init() {
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn   net.Conn
-	addr   string
-	prefix string
-	Logger Logger
+	conn       net.Conn
+	tcpNewLine bool
+	addr       string
+	prefix     string
+	Logger     Logger
 }
 
 // NewStatsdClient - Factory
@@ -57,6 +58,17 @@ func (c *StatsdClient) CreateSocket() error {
 		return err
 	}
 	c.conn = conn
+	return nil
+}
+
+// CreateSocket creates a TCP connection to a StatsD server
+func (c *StatsdClient) CreateTCPSocket() error {
+	conn, err := net.DialTimeout("tcp", c.addr, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	c.conn = conn
+	c.tcpNewLine = true
 	return nil
 }
 
@@ -160,7 +172,11 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 		return fmt.Errorf("not connected")
 	}
 	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
-	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
+	if c.tcpNewLine {
+		format = fmt.Sprintf("%s%s:%s\n", c.prefix, stat, format)
+	} else {
+		format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
+	}
 	_, err := fmt.Fprintf(c.conn, format, value)
 	return err
 }
