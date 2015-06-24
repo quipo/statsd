@@ -29,9 +29,9 @@ func init() {
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
 	conn       net.Conn
-	tcpNewLine bool
 	addr       string
 	prefix     string
+	tcpNewLine bool
 	Logger     Logger
 }
 
@@ -172,6 +172,7 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 		return fmt.Errorf("not connected")
 	}
 	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
+	// if sending tcp append a newline
 	if c.tcpNewLine {
 		format = fmt.Sprintf("%s%s:%s\n", c.prefix, stat, format)
 	} else {
