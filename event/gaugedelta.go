@@ -35,7 +35,7 @@ func (e GaugeDelta) Stats() []string {
 			fmt.Sprintf("%s:%d|g", e.Name, e.Value),
 		}
 	}
-	return []string{fmt.Sprintf("%s:%d|g", e.Name, e.Value)}
+	return []string{fmt.Sprintf("%s:+%d|g", e.Name, e.Value)}
 }
 
 // Key returns the name of this metric
