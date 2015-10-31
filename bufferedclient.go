@@ -24,6 +24,7 @@ type StatsdBuffer struct {
 	events        map[string]event.Event
 	closeChannel  chan closeRequest
 	Logger        Logger
+	Verbose       bool
 }
 
 // NewStatsdBuffer Factory
@@ -35,6 +36,7 @@ func NewStatsdBuffer(interval time.Duration, client *StatsdClient) *StatsdBuffer
 		events:        make(map[string]event.Event, 0),
 		closeChannel:  make(chan closeRequest, 0),
 		Logger:        log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
+		Verbose:       true,
 	}
 	go sb.collector()
 	return sb
@@ -151,7 +153,9 @@ func (sb *StatsdBuffer) collector() {
 				sb.events[k] = e
 			}
 		case c := <-sb.closeChannel:
-			sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
+			if sb.Verbose {
+				sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
+			}
 			c.reply <- sb.flush()
 			return
 		}
