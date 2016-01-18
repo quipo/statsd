@@ -16,7 +16,7 @@ type Logger interface {
 	Println(v ...interface{})
 }
 
-// note Hostname is exported so clients can set it to something different than the default
+// Hostname is exported so clients can set it to something different than the default
 var Hostname string
 
 func init() {
@@ -62,7 +62,7 @@ func (c *StatsdClient) CreateSocket() error {
 	return nil
 }
 
-// CreateSocket creates a TCP connection to a StatsD server
+// CreateTCPSocket creates a TCP connection to a StatsD server
 func (c *StatsdClient) CreateTCPSocket() error {
 	conn, err := net.DialTimeout("tcp", c.addr, 5*time.Second)
 	if err != nil {
