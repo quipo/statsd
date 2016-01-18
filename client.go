@@ -185,8 +185,8 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 		return fmt.Errorf("cannot send stats, not connected to StatsD server")
 	}
 	for _, stat := range e.Stats() {
-		//fmt.Printf("SENDING EVENT %s%s\n", c.prefix, stat)
-		_, err := fmt.Fprintf(c.conn, "%s%s", c.prefix, stat)
+		//fmt.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
+		_, err := fmt.Fprintf(c.conn, "%s%s", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 		if nil != err {
 			return err
 		}

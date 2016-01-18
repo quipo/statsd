@@ -3,7 +3,6 @@ package statsd
 import (
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -140,10 +139,8 @@ func (sb *StatsdBuffer) collector() {
 			sb.flush()
 		case e := <-sb.eventChannel:
 			//sb.Logger.Println("Received ", e.String())
-			// convert %HOST% in key
-			k := strings.Replace(e.Key(), "%HOST%", Hostname, 1)
-			e.SetKey(k)
-
+			// issue #28: unable to use Incr and PrecisionTiming with the same key (also fixed #27)
+			k := e.TypeString() + "|" + e.Key()
 			if e2, ok := sb.events[k]; ok {
 				//sb.Logger.Println("Updating existing event")
 				e2.Update(e)

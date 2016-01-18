@@ -29,7 +29,9 @@ This client library was inspired by the one embedded in the [Bit.ly NSQ](https:/
 package main
 
 import (
-    "time"
+	"log"
+	"os"
+	"time"
 
 	"github.com/quipo/statsd"
 )
@@ -38,7 +40,11 @@ func main() {
 	// init
 	prefix := "myproject."
 	statsdclient := statsd.NewStatsdClient("localhost:8125", prefix)
-	statsdclient.CreateSocket()
+	err := statsdclient.CreateSocket()
+	if nil != err {
+		log.Println(err)
+		os.Exit(1)
+	}
 	interval := time.Second * 2 // aggregate stats and flush every 2 seconds
 	stats := statsd.NewStatsdBuffer(interval, statsdclient)
 	defer stats.Close()
