@@ -28,10 +28,11 @@ func init() {
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn   net.Conn
-	addr   string
-	prefix string
-	Logger Logger
+	conn           net.Conn
+	addr           string
+	prefix         string
+	eventStringTpl string
+	Logger         Logger
 }
 
 // NewStatsdClient - Factory
@@ -39,9 +40,10 @@ func NewStatsdClient(addr string, prefix string) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	return &StatsdClient{
-		addr:   addr,
-		prefix: prefix,
-		Logger: log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		addr:           addr,
+		prefix:         prefix,
+		Logger:         log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		eventStringTpl: "%s%s:%s",
 	}
 }
 
@@ -57,6 +59,17 @@ func (c *StatsdClient) CreateSocket() error {
 		return err
 	}
 	c.conn = conn
+	return nil
+}
+
+// CreateSocket creates a TCP connection to a StatsD server
+func (c *StatsdClient) CreateTCPSocket() error {
+	conn, err := net.DialTimeout("tcp", c.addr, 5*time.Second)
+	if err != nil {
+		return err
+	}
+	c.conn = conn
+	c.eventStringTpl = "%s%s:%s\n"
 	return nil
 }
 
@@ -160,7 +173,8 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 		return fmt.Errorf("not connected")
 	}
 	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
-	format = fmt.Sprintf("%s%s:%s", c.prefix, stat, format)
+	// if sending tcp append a newline
+	format = fmt.Sprintf(c.eventStringTpl, c.prefix, stat, format)
 	_, err := fmt.Fprintf(c.conn, format, value)
 	return err
 }
