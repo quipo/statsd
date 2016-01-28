@@ -11,10 +11,15 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-// MaxStatsSize is the number of bytes to send at one go through the udp socket.
-// SendEvents will try to send as many events as it can in one go based on this
-// parameter.
-var MaxStatsSize int = 16 * 1024
+// UDPPayloadSize is the number of bytes to send at one go through the udp socket.
+// SendEvents will try to pack as many events into one udp packet.
+// Change this value as per network capabilities
+// For example to change to 16KB
+//  import "github.com/quipo/statsd"
+//  func init() {
+//   statsd.UDPPayloadSize = 16 * 1024
+//  }
+var UDPPayloadSize int = 512
 
 // Logger interface compatible with log.Logger
 type Logger interface {
@@ -200,7 +205,7 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 }
 
 // SendEvents - Sends stats from all the event objects.
-// Tries to bundle many together into one fmt.Fprintf based on MaxStatsSize.
+// Tries to bundle many together into one fmt.Fprintf based on UDPPayloadSize.
 func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
 	if c.conn == nil {
 		return fmt.Errorf("cannot send stats, not connected to StatsD server")
@@ -215,7 +220,7 @@ func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
 			stat = fmt.Sprintf("%s%s", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 			_n := n + len(stat) + 1
 
-			if _n <= MaxStatsSize {
+			if _n <= UDPPayloadSize {
 				n = _n
 				stats = append(stats, stat)
 				continue
