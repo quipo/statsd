@@ -5,6 +5,7 @@ import "time"
 // Statsd is an interface to a StatsD client (buffered/unbuffered)
 type Statsd interface {
 	CreateSocket() error
+	CreateTCPSocket() error
 	Close() error
 	Incr(stat string, count int64) error
 	Decr(stat string, count int64) error

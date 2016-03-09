@@ -14,6 +14,11 @@ func (s NoopClient) CreateSocket() error {
 	return nil
 }
 
+// CreateTCPSocket does nothing
+func (s NoopClient) CreateTCPSocket() error {
+	return nil
+}
+
 // Close does nothing
 func (s NoopClient) Close() error {
 	return nil
