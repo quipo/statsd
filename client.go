@@ -11,6 +11,16 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
+// UDPPayloadSize is the number of bytes to send at one go through the udp socket.
+// SendEvents will try to pack as many events into one udp packet.
+// Change this value as per network capabilities
+// For example to change to 16KB
+//  import "github.com/quipo/statsd"
+//  func init() {
+//   statsd.UDPPayloadSize = 16 * 1024
+//  }
+var UDPPayloadSize int = 512
+
 // Logger interface compatible with log.Logger
 type Logger interface {
 	Println(v ...interface{})
@@ -191,5 +201,45 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// SendEvents - Sends stats from all the event objects.
+// Tries to bundle many together into one fmt.Fprintf based on UDPPayloadSize.
+func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
+	if c.conn == nil {
+		return fmt.Errorf("cannot send stats, not connected to StatsD server")
+	}
+
+	var n int
+	var stats []string = make([]string, 0)
+
+	for _, e := range events {
+		for _, stat := range e.Stats() {
+
+			stat = fmt.Sprintf("%s%s", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
+			_n := n + len(stat) + 1
+
+			if _n <= UDPPayloadSize {
+				n = _n
+				stats = append(stats, stat)
+				continue
+			}
+
+			statStr := strings.Join(stats, "\n")
+			if _, err := fmt.Fprintf(c.conn, statStr); err != nil {
+				return err
+			}
+			stats = make([]string, 0)
+			n = 0
+		}
+	}
+
+	if len(stats) != 0 {
+		if _, err := fmt.Fprintf(c.conn, strings.Join(stats, "\n")); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
