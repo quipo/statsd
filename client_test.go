@@ -10,7 +10,41 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/quipo/statsd/event"
 )
+
+// MockNetConn is a mock for net.Conn
+type MockNetConn struct {
+	buf bytes.Buffer
+}
+
+func (mock *MockNetConn) Read(b []byte) (n int, err error) {
+	return mock.buf.Read(b)
+}
+func (mock *MockNetConn) Write(b []byte) (n int, err error) {
+	return mock.buf.Write(append(b, '\n'))
+}
+func (mock MockNetConn) Close() error {
+	mock.buf.Truncate(0)
+	return nil
+}
+func (mock MockNetConn) LocalAddr() net.Addr {
+	return nil
+}
+func (mock MockNetConn) RemoteAddr() net.Addr {
+	return nil
+}
+func (mock MockNetConn) SetDeadline(t time.Time) error {
+	return nil
+}
+func (mock MockNetConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+func (mock MockNetConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
 
 func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	udpAddr, err := net.ResolveUDPAddr("udp", ":1200")
@@ -186,6 +220,7 @@ func TestTCP(t *testing.T) {
 		//fmt.Println(x)
 		if !strings.HasPrefix(x, prefix) {
 			t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+			break
 		}
 		vv := re.FindStringSubmatch(x)
 		if vv[3] != "t" {
@@ -200,5 +235,40 @@ func TestTCP(t *testing.T) {
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
+	}
+}
+
+func TestSendEvents(t *testing.T) {
+	c := NewStatsdClient("127.0.0.1:1201", "test")
+	c.conn = &MockNetConn{} // mock connection
+
+	// override with a small size
+	UDPPayloadSize = 40
+
+	e1 := &event.Increment{Name: "test1", Value: 123}
+	e2 := &event.Increment{Name: "test2", Value: 432}
+	e3 := &event.Increment{Name: "test3", Value: 111}
+	e4 := &event.Gauge{Name: "test4", Value: 12435}
+
+	events := map[string]event.Event{
+		"test1": e1,
+		"test2": e2,
+		"test3": e3,
+		"test4": e4,
+	}
+
+	err := c.SendEvents(events)
+	if nil != err {
+		t.Error(err)
+	}
+
+	b1 := make([]byte, UDPPayloadSize*3)
+	n, err2 := c.conn.Read(b1)
+	if nil != err2 {
+		t.Error(err2)
+	}
+	nStats := len(strings.Split(strings.TrimSpace(string(b1[:n])), "\n"))
+	if nStats != len(events) {
+		t.Errorf("Was expecting %d events, got %d:  %s", len(events), nStats, string(b1))
 	}
 }
