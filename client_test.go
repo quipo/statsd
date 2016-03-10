@@ -47,7 +47,8 @@ func (mock MockNetConn) SetWriteDeadline(t time.Time) error {
 }
 
 func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
-	udpAddr, err := net.ResolveUDPAddr("udp", ":1200")
+	addr := fmt.Sprintf(":%d", getFreePort())
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +86,7 @@ func TestTotal(t *testing.T) {
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
 
-	go doListenUDP(ln, ch, len(s))
+	go doListenUDP(t, ln, ch, len(s))
 
 	err = client.CreateSocket()
 	if nil != err {
@@ -107,6 +108,7 @@ func TestTotal(t *testing.T) {
 		//fmt.Println(x)
 		if !strings.HasPrefix(x, prefix) {
 			t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+			break
 		}
 		vv := re.FindStringSubmatch(x)
 		if vv[3] != "t" {
@@ -124,7 +126,7 @@ func TestTotal(t *testing.T) {
 	}
 }
 
-func doListenUDP(conn *net.UDPConn, ch chan string, n int) {
+func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
 	for n > 0 {
 		// Handle the connection in a new goroutine.
 		// The loop then returns to accepting, so that
@@ -135,7 +137,7 @@ func doListenUDP(conn *net.UDPConn, ch chan string, n int) {
 			// size, address, err := sock.ReadFrom(buffer) <- This starts printing empty and nil values below immediatly
 			if err != nil {
 				fmt.Println(string(buffer), size, err)
-				panic(err)
+				t.Fatal(err)
 			}
 			ch <- string(buffer)
 		}(conn, ch)
@@ -162,22 +164,21 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 	}
 }
 
-func newLocalListenerTCP(t *testing.T) net.Listener {
-
-	ln, err := net.Listen("tcp", "127.0.0.1:1200")
+func newLocalListenerTCP(t *testing.T) (string, net.Listener) {
+	addr := fmt.Sprintf("127.0.0.1:%d", getFreePort())
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ln
+	return addr, ln
 }
 
 func TestTCP(t *testing.T) {
-
-	ln := newLocalListenerTCP(t)
+	addr, ln := newLocalListenerTCP(t)
 	defer ln.Close()
 
 	prefix := "myproject."
-	client := NewStatsdClient("127.0.0.1:1200", prefix)
+	client := NewStatsdClient(addr, prefix)
 
 	ch := make(chan string, 0)
 
@@ -234,7 +235,7 @@ func TestTCP(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
+		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v \n", expected, expected, actual, actual)
 	}
 }
 
@@ -271,4 +272,19 @@ func TestSendEvents(t *testing.T) {
 	if nStats != len(events) {
 		t.Errorf("Was expecting %d events, got %d:  %s", len(events), nStats, string(b1))
 	}
+}
+
+// getFreePort Ask the kernel for a free open port that is ready to use
+func getFreePort() int {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		panic(err)
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
 }

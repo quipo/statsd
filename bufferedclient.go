@@ -46,6 +46,11 @@ func (sb *StatsdBuffer) CreateSocket() error {
 	return sb.statsd.CreateSocket()
 }
 
+// CreateTCPSocket creates a TCP connection to a StatsD server
+func (sb *StatsdBuffer) CreateTCPSocket() error {
+	return sb.statsd.CreateTCPSocket()
+}
+
 // Incr - Increment a counter metric. Often used to note a particular event
 func (sb *StatsdBuffer) Incr(stat string, count int64) error {
 	if 0 != count {
