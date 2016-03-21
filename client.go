@@ -210,7 +210,7 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 // Tries to bundle many together into one fmt.Fprintf based on UDPPayloadSize.
 func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
 	if c.conn == nil {
-		return fmt.Errorf("cannot send stats, not connected to StatsD server")
+		return errNotConnected
 	}
 
 	var n int
