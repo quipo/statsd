@@ -121,7 +121,7 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 // PrecisionTiming - Track a duration event
 // the time delta has to be a duration
 func (c *StatsdClient) PrecisionTiming(stat string, delta time.Duration) error {
-	return c.send(stat, fmt.Sprintf("%.6f%s|ms", float64(delta)/float64(time.Millisecond), "%d"), 0)
+	return c.send(stat, "%.6f|ms", float64(delta)/float64(time.Millisecond))
 }
 
 // Gauge - Gauges are a constant data type. They are not subject to averaging,
