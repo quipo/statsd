@@ -29,6 +29,8 @@ var UDPPayloadSize int = 512
 // Hostname is exported so clients can set it to something different than the default
 var Hostname string
 
+var errNotConnected = fmt.Errorf("cannot send stats, not connected to StatsD server")
+
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
@@ -180,7 +182,7 @@ func (c *StatsdClient) Total(stat string, value int64) error {
 // write a UDP packet with the statsd event
 func (c *StatsdClient) send(stat string, format string, value interface{}) error {
 	if c.conn == nil {
-		return fmt.Errorf("not connected")
+		return errNotConnected
 	}
 	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
 	// if sending tcp append a newline
@@ -192,7 +194,7 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 // SendEvent - Sends stats from an event object
 func (c *StatsdClient) SendEvent(e event.Event) error {
 	if c.conn == nil {
-		return fmt.Errorf("cannot send stats, not connected to StatsD server")
+		return errNotConnected
 	}
 	for _, stat := range e.Stats() {
 		//fmt.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
