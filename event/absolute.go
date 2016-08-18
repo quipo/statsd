@@ -1,12 +1,21 @@
 package event
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+	"time"
+)
 
 // Absolute is a metric that is not averaged/aggregated.
 // We keep each value distinct and then we flush them all individually.
 type Absolute struct {
 	Name   string
+	mu     sync.Mutex
 	Values []int64
+}
+
+func (e *Absolute) StatClass() string {
+	return "counter"
 }
 
 // Update the event with metrics coming from a new one of the same type and with the same key
@@ -14,6 +23,8 @@ func (e *Absolute) Update(e2 Event) error {
 	if e.Type() != e2.Type() {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.Values = append(e.Values, e2.Payload().([]int64)...)
 	return nil
 }
@@ -29,10 +40,10 @@ func (e Absolute) Payload() interface{} {
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e Absolute) Stats() []string {
+func (e Absolute) Stats(tick time.Duration) []string {
 	ret := make([]string, 0, len(e.Values))
 	for v := range e.Values {
-		ret = append(ret, fmt.Sprintf("%s:%d|a", e.Name, v))
+		ret = append(ret, fmt.Sprintf("%s:%d|c", e.Name, v))
 	}
 	return ret
 }

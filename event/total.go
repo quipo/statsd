@@ -1,11 +1,18 @@
 package event
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Total represents a metric that is continously increasing, e.g. read operations since boot
 type Total struct {
 	Name  string
 	Value int64
+}
+
+func (e *Total) StatClass() string {
+	return "counter"
 }
 
 // Update the event with metrics coming from a new one of the same type and with the same key
@@ -17,10 +24,8 @@ func (e *Total) Update(e2 Event) error {
 	return nil
 }
 
-//Reset the value
-func (e *Total) Reset() {
-	e.Value = 0
-}
+// Never reset this value
+func (e *Total) Reset() {}
 
 // Payload returns the aggregated value for this event
 func (e Total) Payload() interface{} {
@@ -28,8 +33,8 @@ func (e Total) Payload() interface{} {
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e Total) Stats() []string {
-	return []string{fmt.Sprintf("%s:%d|t", e.Name, e.Value)}
+func (e Total) Stats(tick time.Duration) []string {
+	return []string{fmt.Sprintf("%s:%d|c", e.Name, e.Value)}
 }
 
 // Key returns the name of this metric

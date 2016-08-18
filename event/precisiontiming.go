@@ -2,16 +2,22 @@ package event
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
 // PrecisionTiming keeps min/max/avg information about a timer over a certain interval
 type PrecisionTiming struct {
 	Name  string
+	mu    sync.Mutex
 	Min   time.Duration
 	Max   time.Duration
 	Value time.Duration
 	Count int64
+}
+
+func (e *PrecisionTiming) StatClass() string {
+	return "timer"
 }
 
 // NewPrecisionTiming is a factory for a Timing event, setting the Count to 1 to prevent div_by_0 errors
@@ -25,6 +31,8 @@ func (e *PrecisionTiming) Update(e2 Event) error {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
 	p := e2.Payload().(PrecisionTiming)
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.Count += p.Count
 	e.Value += p.Value
 	e.Min = time.Duration(minInt64(int64(e.Min), int64(p.Min)))
@@ -46,12 +54,12 @@ func (e PrecisionTiming) Payload() interface{} {
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e PrecisionTiming) Stats() []string {
+func (e PrecisionTiming) Stats(tick time.Duration) []string {
 	return []string{
-		fmt.Sprintf("%s.count:%d|a", e.Name, int64(e.Count)),
-		fmt.Sprintf("%s.avg:%.6f|a", e.Name, float64(int64(e.Value)/e.Count)), // make sure e.Count != 0
-		fmt.Sprintf("%s.min:%.6f|a", e.Name, float64(e.Min)),
-		fmt.Sprintf("%s.max:%.6f|a", e.Name, float64(e.Max)),
+		fmt.Sprintf("%s.count:%d|c", e.Name, int64(e.Count)),
+		fmt.Sprintf("%s.avg:%.6f|ms", e.Name, float64(int64(e.Value)/e.Count)), // make sure e.Count != 0
+		fmt.Sprintf("%s.min:%.6f|ms", e.Name, float64(e.Min)),
+		fmt.Sprintf("%s.max:%.6f|ms", e.Name, float64(e.Max)),
 	}
 }
 

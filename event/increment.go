@@ -1,6 +1,10 @@
 package event
 
-import "fmt"
+import (
+	"fmt"
+	"sync/atomic"
+	"time"
+)
 
 // Increment represents a metric whose value is averaged over a minute
 type Increment struct {
@@ -8,12 +12,16 @@ type Increment struct {
 	Value int64
 }
 
+func (e *Increment) StatClass() string {
+	return "counter"
+}
+
 // Update the event with metrics coming from a new one of the same type and with the same key
 func (e *Increment) Update(e2 Event) error {
 	if e.Type() != e2.Type() {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
-	e.Value += e2.Payload().(int64)
+	atomic.AddInt64(&e.Value, e2.Payload().(int64))
 	return nil
 }
 
@@ -28,7 +36,7 @@ func (e Increment) Payload() interface{} {
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e Increment) Stats() []string {
+func (e Increment) Stats(tick time.Duration) []string {
 	return []string{fmt.Sprintf("%s:%d|c", e.Name, e.Value)}
 }
 

@@ -1,6 +1,10 @@
 package event
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+	"time"
+)
 
 // Gauge - Gauges are a constant data type. They are not subject to averaging,
 // and they don’t change unless you change them. That is, once you set a gauge value,
@@ -8,6 +12,11 @@ import "fmt"
 type FGauge struct {
 	Name  string
 	Value float64
+	mu    sync.Mutex
+}
+
+func (e *FGauge) StatClass() string {
+	return "gauge"
 }
 
 // Update the event with metrics coming from a new one of the same type and with the same key
@@ -15,6 +24,8 @@ func (e *FGauge) Update(e2 Event) error {
 	if e.Type() != e2.Type() {
 		return fmt.Errorf("statsd event type conflict: %s vs %s ", e.String(), e2.String())
 	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.Value += e2.Payload().(float64)
 	return nil
 }
@@ -29,7 +40,7 @@ func (e FGauge) Payload() interface{} {
 }
 
 // Stats returns an array of StatsD events as they travel over UDP
-func (e FGauge) Stats() []string {
+func (e FGauge) Stats(tick time.Duration) []string {
 	if e.Value < 0 {
 		// because a leading '+' or '-' in the value of a gauge denotes a delta, to send
 		// a negative gauge value we first set the gauge absolutely to 0, then send the
