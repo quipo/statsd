@@ -124,6 +124,23 @@ func (sb *StatsdBuffer) Total(stat string, value int64) error {
 	return nil
 }
 
+// avoid too many allocations by memoizing the "type|key" pair for an event
+// @see https://gobyexample.com/closures
+func initMemoisedKeyMap() func(typ string, key string) string {
+	m := make(map[string]map[string]string)
+	return func(typ string, key string) string {
+		if _, ok := m[typ]; !ok {
+			m[typ] = make(map[string]string)
+		}
+		if k, ok := m[typ][key]; !ok {
+			m[typ][key] = typ + "|" + key
+			return m[typ][key]
+		} else {
+			return k // memoized value
+		}
+	}
+}
+
 // handle flushes and updates in one single thread (instead of locking the events map)
 func (sb *StatsdBuffer) collector() {
 	// on a panic event, flush all the pending stats before panicking
@@ -135,6 +152,8 @@ func (sb *StatsdBuffer) collector() {
 		}
 	}(sb)
 
+	keyFor := initMemoisedKeyMap() // avoid allocations (https://gobyexample.com/closures)
+
 	ticker := time.NewTicker(sb.flushInterval)
 
 	for {
@@ -145,7 +164,7 @@ func (sb *StatsdBuffer) collector() {
 		case e := <-sb.eventChannel:
 			//sb.Logger.Println("Received ", e.String())
 			// issue #28: unable to use Incr and PrecisionTiming with the same key (also fixed #27)
-			k := e.TypeString() + "|" + e.Key()
+			k := keyFor(e.TypeString(), e.Key()) // avoid allocations
 			if e2, ok := sb.events[k]; ok {
 				//sb.Logger.Println("Updating existing event")
 				e2.Update(e)
