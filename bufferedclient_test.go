@@ -39,7 +39,7 @@ func TestBufferedTotal(t *testing.T) {
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
 
-	go doListenUDP(t, ln, ch, len(s))
+	go doListenUDP(t, ln, ch, 1)
 
 	err = buffered.CreateSocket()
 	if nil != err {
