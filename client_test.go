@@ -146,8 +146,8 @@ func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
 }
 
 func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
+	client, err := conn.Accept()
 	for {
-		client, err := conn.Accept()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,11 +155,16 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 		buf := make([]byte, 1024)
 		c, err := client.Read(buf)
 		if err != nil {
+			if err.Error() == "EOF" {
+				return
+			}
 			t.Fatal(err)
 		}
 
 		for _, s := range bytes.Split(buf[:c], []byte{'\n'}) {
-			ch <- string(s)
+			if len(s) > 0 {
+				ch <- string(s)
+			}
 		}
 	}
 }
