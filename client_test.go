@@ -162,7 +162,9 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 		}
 
 		for _, s := range bytes.Split(buf[:c], []byte{'\n'}) {
-			ch <- string(s)
+			if len(s) > 0 {
+				ch <- string(s)
+			}
 		}
 	}
 }
