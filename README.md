@@ -4,6 +4,11 @@
 
 ## Introduction
 
+
+[![Build Status](https://travis-ci.org/quipo/statsd.png?branch=master)](https://travis-ci.org/quipo/statsd) 
+[![GoDoc](https://godoc.org/github.com/quipo/statsd?status.png)](http://godoc.org/github.com/quipo/statsd)
+
+
 Go Client library for [StatsD](https://github.com/etsy/statsd/). Contains a direct and a buffered client.
 The buffered version will hold and aggregate values for the same key in memory before flushing them at the defined frequency.
 
