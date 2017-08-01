@@ -66,6 +66,7 @@ The string "%HOST%" in the metric name will automatically be replaced with the h
 
 ## Changelog
 
+* `v.1.2.0`: Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
 * `v.1.1.0`:
 
     * Added `SendEvents` function to `Statsd` interface;
