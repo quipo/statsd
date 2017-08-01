@@ -15,13 +15,13 @@ This client library was inspired by the one embedded in the [Bit.ly NSQ](https:/
 
 ## Supported event types
 
-* Increment - Count occurrences per second/minute of a specific event
-* Decrement - Count occurrences per second/minute of a specific event
-* Timing - To track a duration event
-* PrecisionTiming - To track a duration event
-* Gauge - Gauges are a constant data type. They are not subject to averaging, and they don’t change unless you change them. That is, once you set a gauge value, it will be a flat line on the graph until you change it again
-* Absolute - Absolute-valued metric (not averaged/aggregated)
-* Total - Continously increasing value, e.g. read operations since boot
+* `Increment` - Count occurrences per second/minute of a specific event
+* `Decrement` - Count occurrences per second/minute of a specific event
+* `Timing` - To track a duration event
+* `PrecisionTiming - To track a duration event
+* `Gauge` - Gauges are a constant data type. They are not subject to averaging, and they don’t change unless you change them. That is, once you set a gauge value, it will be a flat line on the graph until you change it again
+* `Absolute` - Absolute-valued metric (not averaged/aggregated)
+* `Total` - Continously increasing value, e.g. read operations since boot
 
 
 ## Sample usage
@@ -61,10 +61,15 @@ func main() {
 }
 ```
 
-The string "%HOST%" in the metric name will automatically be replaced with the hostname of the server the event is sent from.
+The string `%HOST%` in the metric name will automatically be replaced with the hostname of the server the event is sent from.
 
 
-## Changelog
+## [Changelog](https://github.com/quipo/statsd/releases)
+
+* `HEAD`:
+
+    * Added stdout client ("echo" service for debugging)
+    * 
 
 * `v.1.2.0`: Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
 * `v.1.1.0`:
