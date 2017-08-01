@@ -69,7 +69,8 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 * `HEAD`:
 
     * Added stdout client ("echo" service for debugging)
-    * 
+    * Fixed issue #23: GaugeDelta event Stats() should not send an absolute value of 0
+    * Added tests and compile-time checks that the default events implement the Event interface
 
 * `v.1.2.0`: Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
 * `v.1.1.0`:
