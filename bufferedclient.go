@@ -32,8 +32,8 @@ func NewStatsdBuffer(interval time.Duration, client Statsd) *StatsdBuffer {
 		flushInterval: interval,
 		statsd:        client,
 		eventChannel:  make(chan event.Event, 100),
-		events:        make(map[string]event.Event, 0),
-		closeChannel:  make(chan closeRequest, 0),
+		events:        make(map[string]event.Event),
+		closeChannel:  make(chan closeRequest),
 		Logger:        log.New(os.Stdout, "[BufferedStatsdClient] ", log.Ldate|log.Ltime),
 		Verbose:       true,
 	}
@@ -140,12 +140,12 @@ func initMemoisedKeyMap() func(typ string, key string) string {
 		if _, ok := m[typ]; !ok {
 			m[typ] = make(map[string]string)
 		}
-		if k, ok := m[typ][key]; !ok {
+		k, ok := m[typ][key]
+		if !ok {
 			m[typ][key] = typ + "|" + key
 			return m[typ][key]
-		} else {
-			return k // memoized value
 		}
+		return k // memoized value
 	}
 }
 
@@ -155,7 +155,10 @@ func (sb *StatsdBuffer) collector() {
 	defer func(sb *StatsdBuffer) {
 		if r := recover(); r != nil {
 			sb.Logger.Println("Caught panic, flushing stats before throwing the panic again")
-			sb.flush()
+			err := sb.flush()
+			if nil != err {
+				sb.Logger.Println("Error flushing stats", err.Error())
+			}
 			panic(r)
 		}
 	}(sb)
@@ -168,14 +171,20 @@ func (sb *StatsdBuffer) collector() {
 		select {
 		case <-ticker.C:
 			//sb.Logger.Println("Flushing stats")
-			sb.flush()
+			err := sb.flush()
+			if nil != err {
+				sb.Logger.Println("Error flushing stats", err.Error())
+			}
 		case e := <-sb.eventChannel:
 			//sb.Logger.Println("Received ", e.String())
 			// issue #28: unable to use Incr and PrecisionTiming with the same key (also fixed #27)
 			k := keyFor(e.TypeString(), e.Key()) // avoid allocations
 			if e2, ok := sb.events[k]; ok {
 				//sb.Logger.Println("Updating existing event")
-				e2.Update(e)
+				err := e2.Update(e)
+				if nil != err {
+					sb.Logger.Println("Error updating stats", err.Error())
+				}
 				sb.events[k] = e2
 			} else {
 				//sb.Logger.Println("Adding new event")
@@ -195,7 +204,7 @@ func (sb *StatsdBuffer) collector() {
 // and closes the statsd client
 func (sb *StatsdBuffer) Close() (err error) {
 	// 1. send a close event to the collector
-	req := closeRequest{reply: make(chan error, 0)}
+	req := closeRequest{reply: make(chan error)}
 	sb.closeChannel <- req
 	// 2. wait for the collector to drain the queue and respond
 	err = <-req.reply

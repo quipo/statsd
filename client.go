@@ -153,6 +153,7 @@ func (c *StatsdClient) Timing(stat string, delta int64) error {
 	return c.TimingWithSampling(stat, delta, 1)
 }
 
+// TimingWithSampling - Track a duration event
 func (c *StatsdClient) TimingWithSampling(stat string, delta int64, sampleRate float32) error {
 	if err := checkSampleRate(sampleRate); err != nil {
 		return err
@@ -181,6 +182,7 @@ func (c *StatsdClient) Gauge(stat string, value int64) error {
 	return c.GaugeWithSampling(stat, value, 1)
 }
 
+// GaugeWithSampling - Gauges are a constant data type.
 func (c *StatsdClient) GaugeWithSampling(stat string, value int64, sampleRate float32) error {
 	if err := checkSampleRate(sampleRate); err != nil {
 		return err
@@ -191,7 +193,10 @@ func (c *StatsdClient) GaugeWithSampling(stat string, value int64, sampleRate fl
 	}
 
 	if value < 0 {
-		c.send(stat, "%d|g", 0, 1)
+		err := c.send(stat, "%d|g", 0, 1)
+		if nil != err {
+			return err
+		}
 	}
 
 	return c.send(stat, "%d|g", value, sampleRate)
@@ -211,6 +216,7 @@ func (c *StatsdClient) FGauge(stat string, value float64) error {
 	return c.FGaugeWithSampling(stat, value, 1)
 }
 
+// FGaugeWithSampling - Gauges are a constant data type.
 func (c *StatsdClient) FGaugeWithSampling(stat string, value float64, sampleRate float32) error {
 	if err := checkSampleRate(sampleRate); err != nil {
 		return err
@@ -221,7 +227,10 @@ func (c *StatsdClient) FGaugeWithSampling(stat string, value float64, sampleRate
 	}
 
 	if value < 0 {
-		c.send(stat, "%d|g", 0, 1)
+		err := c.send(stat, "%d|g", 0, 1)
+		if nil != err {
+			return err
+		}
 	}
 
 	return c.send(stat, "%g|g", value, sampleRate)

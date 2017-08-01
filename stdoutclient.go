@@ -95,7 +95,10 @@ func (s *StdoutClient) PrecisionTiming(stat string, delta time.Duration) error {
 // first setting it to zero.
 func (s *StdoutClient) Gauge(stat string, value int64) error {
 	if value < 0 {
-		s.send(stat, "%d|g", 0)
+		err := s.send(stat, "%d|g", 0)
+		if nil != err {
+			return err
+		}
 		return s.send(stat, "%d|g", value)
 	}
 	return s.send(stat, "%d|g", value)
@@ -113,7 +116,10 @@ func (s *StdoutClient) GaugeDelta(stat string, value int64) error {
 // FGauge -- Send a floating point value for a gauge
 func (s *StdoutClient) FGauge(stat string, value float64) error {
 	if value < 0 {
-		s.send(stat, "%d|g", 0)
+		err := s.send(stat, "%d|g", 0)
+		if nil != err {
+			return err
+		}
 		return s.send(stat, "%g|g", value)
 	}
 	return s.send(stat, "%g|g", value)
@@ -167,7 +173,7 @@ func (s *StdoutClient) SendEvent(e event.Event) error {
 // Tries to bundle many together into one fmt.Fprintf based on UDPPayloadSize.
 func (s *StdoutClient) SendEvents(events map[string]event.Event) error {
 	var n int
-	var stats []string = make([]string, 0)
+	var stats = make([]string, 0)
 
 	for _, e := range events {
 		for _, stat := range e.Stats() {

@@ -23,7 +23,7 @@ func TestBufferedTotal(t *testing.T) {
 	client := NewStatsdClient(udpAddr.String(), prefix)
 	buffered := NewStatsdBuffer(time.Millisecond*20, client)
 
-	ch := make(chan string, 0)
+	ch := make(chan string)
 
 	s := map[string]int64{
 		"a:b:c": 5,
@@ -41,6 +41,9 @@ func TestBufferedTotal(t *testing.T) {
 	s["zz.%HOST%"] = 1
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
+	if nil != err {
+		t.Fatal("Cannot read host name:", err)
+	}
 
 	go doListenUDP(t, ln, ch, len(s))
 	time.Sleep(50 * time.Millisecond)
@@ -52,7 +55,10 @@ func TestBufferedTotal(t *testing.T) {
 	defer buffered.Close()
 
 	for k, v := range s {
-		buffered.Total(k, v)
+		err = buffered.Total(k, v)
+		if nil != err {
+			t.Error(err)
+		}
 	}
 
 	actual := make(map[string]int64)

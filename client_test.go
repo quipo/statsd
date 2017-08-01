@@ -47,6 +47,7 @@ func (mock MockNetConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
+/*
 // TODO: use this function instead mocking net.Conn
 // usage: client, server := GetTestConnection("tcp", t)
 // usage: client, server := GetTestConnection("udp", t)
@@ -69,6 +70,7 @@ func GetTestConnection(connType string, t *testing.T) (client, server net.Conn) 
 	}
 	return client, server
 }
+*/
 
 func TestTotal(t *testing.T) {
 	ln, udpAddr := newLocalListenerUDP(t)
@@ -80,7 +82,7 @@ func TestTotal(t *testing.T) {
 
 	client := NewStatsdClient(udpAddr.String(), prefix)
 
-	ch := make(chan string, 0)
+	ch := make(chan string)
 
 	s := map[string]int64{
 		"a:b:c": 5,
@@ -98,6 +100,9 @@ func TestTotal(t *testing.T) {
 	s["zz.%HOST%"] = 1
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
+	if nil != err {
+		t.Error("Cannot read host name:", err.Error())
+	}
 
 	go doListenUDP(t, ln, ch, len(s))
 
@@ -108,7 +113,10 @@ func TestTotal(t *testing.T) {
 	defer client.Close()
 
 	for k, v := range s {
-		client.Total(k, v)
+		err = client.Total(k, v)
+		if nil != err {
+			t.Error(err)
+		}
 	}
 
 	actual := make(map[string]int64)
@@ -147,11 +155,13 @@ func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	addr := fmt.Sprintf(":%d", getFreePort())
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		t.Fatal("UDP error:", err)
+		t.Error("UDP error:", err)
+		return nil, nil
 	}
 	ln, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		t.Fatal("UDP Listen error:", err)
+		t.Error("UDP Listen error:", err)
+		return ln, udpAddr
 	}
 	t.Logf("Started new local UDP listener @ %s\n", udpAddr)
 	return ln, udpAddr
@@ -190,7 +200,8 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 		client, err := conn.Accept()
 
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 
 		buf := make([]byte, 1024)
@@ -199,7 +210,8 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 			if err.Error() == "EOF" {
 				return
 			}
-			t.Fatal(err)
+			t.Error(err)
+			return
 		}
 		t.Logf("Read from TCP socket:\n----------\n%s\n----------\n", string(buf))
 		for _, s := range bytes.Split(buf[:c], []byte{'\n'}) {
@@ -231,7 +243,7 @@ func TestTCP(t *testing.T) {
 	prefix := "myproject."
 	client := NewStatsdClient(addr, prefix)
 
-	ch := make(chan string, 0)
+	ch := make(chan string)
 
 	s := map[string]int64{
 		"a:b:c": 5,
@@ -249,16 +261,22 @@ func TestTCP(t *testing.T) {
 	s["zz.%HOST%"] = 1
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
+	if nil != err {
+		t.Error("Cannot read host name:", err.Error())
+	}
 
 	t.Logf("Sending stats to TCP Socket")
 	err = client.CreateTCPSocket()
 	if nil != err {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	defer client.Close()
 
 	for k, v := range s {
-		client.Total(k, v)
+		err = client.Total(k, v)
+		if nil != err {
+			t.Error(err)
+		}
 	}
 	time.Sleep(60 * time.Millisecond)
 
