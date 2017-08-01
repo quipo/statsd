@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,22 +47,34 @@ func (mock MockNetConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
-	addr := fmt.Sprintf(":%d", getFreePort())
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		t.Fatal(err)
+// TODO: use this function instead mocking net.Conn
+// usage: client, server := GetTestConnection("tcp", t)
+// usage: client, server := GetTestConnection("udp", t)
+func GetTestConnection(connType string, t *testing.T) (client, server net.Conn) {
+	ln, err := net.Listen(connType, "127.0.0.1")
+	if nil != err {
+		t.Error("TCP errpr:", err)
 	}
-	ln, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		t.Fatal(err)
+	go func() {
+		defer ln.Close()
+		server, err = ln.Accept()
+		if nil != err {
+			t.Error("TCP Accept errpr:", err)
+		}
+	}()
+
+	client, err = net.Dial(connType, ln.Addr().String())
+	if nil != err {
+		t.Error("TCP Dial error:", err)
 	}
-	return ln, udpAddr
+	return client, server
 }
 
 func TestTotal(t *testing.T) {
 	ln, udpAddr := newLocalListenerUDP(t)
 	defer ln.Close()
+	t.Log("Starting new UDP listener at", udpAddr.String())
+	time.Sleep(50 * time.Millisecond)
 
 	prefix := "myproject."
 
@@ -90,7 +103,7 @@ func TestTotal(t *testing.T) {
 
 	err = client.CreateSocket()
 	if nil != err {
-		t.Fatal(err)
+		t.Fatal("Create socket error:", err)
 	}
 	defer client.Close()
 
@@ -103,9 +116,13 @@ func TestTotal(t *testing.T) {
 	re := regexp.MustCompile(`^(.*)\:(\d+)\|(\w).*$`)
 
 	for i := len(s); i > 0; i-- {
-		x := <-ch
+		x, open := <-ch
+		if !open {
+			t.Logf("CLOSED CHANNEL")
+			break
+		}
 		x = strings.TrimSpace(x)
-		//fmt.Println(x)
+		//t.Logf(x)
 		if !strings.HasPrefix(x, prefix) {
 			t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
 			break
@@ -116,7 +133,7 @@ func TestTotal(t *testing.T) {
 		}
 		v, err := strconv.ParseInt(vv[2], 10, 64)
 		if err != nil {
-			t.Error(err)
+			t.Error("Cannot parse int:", err)
 		}
 		actual[vv[1][len(prefix):]] = v
 	}
@@ -126,28 +143,52 @@ func TestTotal(t *testing.T) {
 	}
 }
 
+func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
+	addr := fmt.Sprintf(":%d", getFreePort())
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		t.Fatal("UDP error:", err)
+	}
+	ln, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatal("UDP Listen error:", err)
+	}
+	t.Logf("Started new local UDP listener @ %s\n", udpAddr)
+	return ln, udpAddr
+}
+
 func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
+	var wg sync.WaitGroup
+	wg.Add(n)
+
 	for n > 0 {
 		// Handle the connection in a new goroutine.
 		// The loop then returns to accepting, so that
 		// multiple connections may be served concurrently.
-		go func(c *net.UDPConn, ch chan string) {
+		go func(c *net.UDPConn, ch chan string, wg *sync.WaitGroup) {
+			t.Logf("Reading from UDP socket @ %s\n", conn.LocalAddr().String())
 			buffer := make([]byte, 1024)
 			size, err := c.Read(buffer)
 			// size, address, err := sock.ReadFrom(buffer) <- This starts printing empty and nil values below immediatly
 			if err != nil {
-				fmt.Println(string(buffer), size, err)
-				t.Fatal(err)
+				t.Logf("Error reading from UDP socket. Buffer: %s, Size: %d, Error: %s\n", string(buffer), size, err)
+				//t.Fatal(err)
 			}
+			t.Logf("Read buffer: \n------------------\n%s\n------------------\n* Size: %d\n", string(buffer), size)
 			ch <- string(buffer)
-		}(conn, ch)
+			wg.Done()
+		}(conn, ch, &wg)
 		n--
 	}
+	wg.Wait()
+	t.Logf("Finished listening on UDP socket @ %s\n", conn.LocalAddr().String())
 }
 
 func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
-	client, err := conn.Accept()
-	for {
+	for n > 0 { // read n non-empty lines from TCP socket
+		t.Logf("doListenTCP iteration")
+		client, err := conn.Accept()
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,12 +201,14 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 			}
 			t.Fatal(err)
 		}
-
+		t.Logf("Read from TCP socket:\n----------\n%s\n----------\n", string(buf))
 		for _, s := range bytes.Split(buf[:c], []byte{'\n'}) {
 			if len(s) > 0 {
+				n--
 				ch <- string(s)
 			}
 		}
+
 	}
 }
 
@@ -181,6 +224,9 @@ func newLocalListenerTCP(t *testing.T) (string, net.Listener) {
 func TestTCP(t *testing.T) {
 	addr, ln := newLocalListenerTCP(t)
 	defer ln.Close()
+
+	t.Log("Starting new TCP listener at", addr)
+	time.Sleep(50 * time.Millisecond)
 
 	prefix := "myproject."
 	client := NewStatsdClient(addr, prefix)
@@ -204,8 +250,7 @@ func TestTCP(t *testing.T) {
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
 
-	go doListenTCP(t, ln, ch, len(s))
-
+	t.Logf("Sending stats to TCP Socket")
 	err = client.CreateTCPSocket()
 	if nil != err {
 		t.Fatal(err)
@@ -215,14 +260,27 @@ func TestTCP(t *testing.T) {
 	for k, v := range s {
 		client.Total(k, v)
 	}
+	time.Sleep(60 * time.Millisecond)
+
+	go doListenTCP(t, ln, ch, len(s))
+	time.Sleep(50 * time.Millisecond)
 
 	actual := make(map[string]int64)
 
 	re := regexp.MustCompile(`^(.*)\:(\d+)\|(\w).*$`)
 
 	for i := len(s); i > 0; i-- {
-		x := <-ch
+		//t.Logf("ITERATION %d\n", i)
+		x, open := <-ch
+		if !open {
+			//t.Logf("CLOSED _____")
+			break
+		}
 		x = strings.TrimSpace(x)
+		if "" == x {
+			//t.Logf("EMPTY STRING *****")
+			break
+		}
 		//fmt.Println(x)
 		if !strings.HasPrefix(x, prefix) {
 			t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)

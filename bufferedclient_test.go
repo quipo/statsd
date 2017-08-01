@@ -15,6 +15,9 @@ func TestBufferedTotal(t *testing.T) {
 	ln, udpAddr := newLocalListenerUDP(t)
 	defer ln.Close()
 
+	t.Log("Starting new UDP listener at", udpAddr.String())
+	time.Sleep(50 * time.Millisecond)
+
 	prefix := "myproject."
 
 	client := NewStatsdClient(udpAddr.String(), prefix)
@@ -39,7 +42,8 @@ func TestBufferedTotal(t *testing.T) {
 	hostname, err := os.Hostname()
 	expected["zz."+hostname] = 1
 
-	go doListenUDP(t, ln, ch, 1)
+	go doListenUDP(t, ln, ch, len(s))
+	time.Sleep(50 * time.Millisecond)
 
 	err = buffered.CreateSocket()
 	if nil != err {
@@ -61,7 +65,9 @@ func TestBufferedTotal(t *testing.T) {
 		batch := <-ch
 		for _, x := range strings.Split(batch, "\n") {
 			x = strings.TrimSpace(x)
-			//fmt.Println(x)
+			if "" == x {
+				continue
+			}
 			if !strings.HasPrefix(x, prefix) {
 				t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
 				return
@@ -83,4 +89,6 @@ func TestBufferedTotal(t *testing.T) {
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
 	}
+
+	time.Sleep(2 * time.Second)
 }

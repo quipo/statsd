@@ -17,7 +17,7 @@ type closeRequest struct {
 // flushing aggregates to StatsD, useful if the frequency of events is extremely high
 // and sampling is not desirable
 type StatsdBuffer struct {
-	statsd        *StatsdClient
+	statsd        Statsd
 	flushInterval time.Duration
 	eventChannel  chan event.Event
 	events        map[string]event.Event
@@ -27,7 +27,7 @@ type StatsdBuffer struct {
 }
 
 // NewStatsdBuffer Factory
-func NewStatsdBuffer(interval time.Duration, client *StatsdClient) *StatsdBuffer {
+func NewStatsdBuffer(interval time.Duration, client Statsd) *StatsdBuffer {
 	sb := &StatsdBuffer{
 		flushInterval: interval,
 		statsd:        client,
@@ -121,6 +121,14 @@ func (sb *StatsdBuffer) FAbsolute(stat string, value float64) error {
 // Total - Send a metric that is continously increasing, e.g. read operations since boot
 func (sb *StatsdBuffer) Total(stat string, value int64) error {
 	sb.eventChannel <- &event.Total{Name: stat, Value: value}
+	return nil
+}
+
+// SendEvents - Sends stats from all the event objects.
+func (sb *StatsdBuffer) SendEvents(events map[string]event.Event) error {
+	for _, e := range events {
+		sb.eventChannel <- e
+	}
 	return nil
 }
 

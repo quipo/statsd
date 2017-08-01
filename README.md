@@ -18,6 +18,7 @@ This client library was inspired by the one embedded in the [Bit.ly NSQ](https:/
 * Increment - Count occurrences per second/minute of a specific event
 * Decrement - Count occurrences per second/minute of a specific event
 * Timing - To track a duration event
+* PrecisionTiming - To track a duration event
 * Gauge - Gauges are a constant data type. They are not subject to averaging, and they don’t change unless you change them. That is, once you set a gauge value, it will be a flat line on the graph until you change it again
 * Absolute - Absolute-valued metric (not averaged/aggregated)
 * Total - Continously increasing value, e.g. read operations since boot
@@ -62,6 +63,18 @@ func main() {
 
 The string "%HOST%" in the metric name will automatically be replaced with the hostname of the server the event is sent from.
 
+
+## Changelog
+
+* `v.1.1.0`:
+
+    * Added `SendEvents` function to `Statsd` interface;
+    * Using interface in buffered client constructor;
+    * Added/Fixed tests
+
+* `v.1.0.0`: First stable release
+* `v.0.0.9`: Added memoization to reduce memory allocations
+* `v.0.0.8`: Pre-release
 
 ## Author
 
