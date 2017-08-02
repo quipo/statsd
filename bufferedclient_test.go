@@ -130,12 +130,12 @@ func TestBufferedInt64(t *testing.T) {
 			input: []KVint64{
 				{"a:b:c", 5},
 				{"d:e:f", 2},
-				{"a:b:c", 5},
+				{"a:b:c", -2},
 				{"g.h.i", 1},
 				{"zz.%HOST%", 1}, // also test %HOST% replacement
 			},
 			expected: []KVint64{
-				{"a:b:c", 10},
+				{"a:b:c", 3},
 				{"d:e:f", 2},
 				{"g.h.i", 1},
 				{"zz." + hostname, 1}, // also test %HOST% replacement
@@ -175,7 +175,11 @@ func TestBufferedInt64(t *testing.T) {
 				case "gaugedelta":
 					err = buffered.GaugeDelta(entry.Key, entry.Value)
 				case "increment":
-					err = buffered.Incr(entry.Key, entry.Value)
+					if entry.Value < 0 {
+						err = buffered.Decr(entry.Key, int64(math.Abs(float64(entry.Value))))
+					} else {
+						err = buffered.Incr(entry.Key, entry.Value)
+					}
 				}
 				if nil != err {
 					t.Error(err)
