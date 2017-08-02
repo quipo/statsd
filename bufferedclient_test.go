@@ -276,7 +276,6 @@ func TestBufferedFloat64(t *testing.T) {
 			},
 			expected: KVfloat64Sorter{
 				{"a:b:c", 3.0},
-				{"d:e:f", 0},
 				{"d:e:f", -2.2},
 				{"g.h.i", +1.3},
 				{"zz." + hostname, 1.4}, // also test %HOST% replacement

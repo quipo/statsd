@@ -26,10 +26,7 @@ func (e GaugeDelta) Payload() interface{} {
 
 // Stats returns an array of StatsD events as they travel over UDP
 func (e GaugeDelta) Stats() []string {
-	if e.Value < 0 {
-		return []string{fmt.Sprintf("%s:%+d|g", e.Name, e.Value)}
-	}
-	return []string{fmt.Sprintf("%s:+%d|g", e.Name, e.Value)}
+	return []string{fmt.Sprintf("%s:%+d|g", e.Name, e.Value)}
 }
 
 // Key returns the name of this metric

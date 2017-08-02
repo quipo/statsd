@@ -24,3 +24,18 @@ func TestGaugeUpdate(t *testing.T) {
 		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
 	}
 }
+
+func TestGaugeUpdateNegative(t *testing.T) {
+	e1 := &Gauge{Name: "test", Value: int64(-10)}
+	e2 := &Gauge{Name: "test", Value: int64(-3)}
+	err := e1.Update(e2)
+	if nil != err {
+		t.Error(err)
+	}
+
+	expected := []string{"test:0|g", "test:-3|g"} // only the last value is flushed
+	actual := e1.Stats()
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
+	}
+}
