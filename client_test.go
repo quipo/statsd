@@ -185,7 +185,7 @@ func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
 				//t.Fatal(err)
 			}
 			t.Logf("Read buffer: \n------------------\n%s\n------------------\n* Size: %d\n", string(buffer), size)
-			ch <- string(buffer)
+			ch <- string(buffer[:size])
 			wg.Done()
 		}(conn, ch, &wg)
 		n--
@@ -205,7 +205,7 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 		}
 
 		buf := make([]byte, 1024)
-		c, err := client.Read(buf)
+		size, err := client.Read(buf)
 		if err != nil {
 			if err.Error() == "EOF" {
 				return
@@ -214,7 +214,7 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 			return
 		}
 		t.Logf("Read from TCP socket:\n----------\n%s\n----------\n", string(buf))
-		for _, s := range bytes.Split(buf[:c], []byte{'\n'}) {
+		for _, s := range bytes.Split(buf[:size], []byte{'\n'}) {
 			if len(s) > 0 {
 				n--
 				ch <- string(s)
@@ -349,7 +349,9 @@ func TestSendEvents(t *testing.T) {
 	if nil != err2 {
 		t.Error(err2)
 	}
-	nStats := len(strings.Split(strings.TrimSpace(string(b1[:n])), "\n"))
+	cleanPayload := strings.Replace(strings.TrimSpace(string(b1[:n])), "\n\n", "\n", -1)
+	nStats := len(strings.Split(cleanPayload, "\n"))
+
 	if nStats != len(events) {
 		t.Errorf("Was expecting %d events, got %d:  %s", len(events), nStats, string(b1))
 	}
