@@ -70,11 +70,16 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 
 * `HEAD`:
 
+    * ...
+
+* `v.1.3.0`:
+
     * Added stdout client ("echo" service for debugging)
     * Fixed [issue #23](https://github.com/quipo/statsd/issues/23): GaugeDelta event Stats() should not send an absolute value of 0
     * Fixed FGauge's collation in the buffered client to only preserve the last value in the batch (it mistakenly had the same implementation of FGaugeDelta's collation)
     * Fixed FGaugeDelta with negative value not to send a 0 value first (it mistakenly had the same implementation of FGauge)
-    * Added tests and compile-time checks that the default events implement the Event interface
+    * Added many tests
+    * Added compile-time checks that the default events implement the Event interface
 
 * `v.1.2.0`: Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
 * `v.1.1.0`:
