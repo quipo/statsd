@@ -26,13 +26,23 @@ type KVfloat64 struct {
 type KVint64Sorter []KVint64
 type KVfloat64Sorter []KVfloat64
 
-func (a KVint64Sorter) Len() int           { return len(a) }
-func (a KVint64Sorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a KVint64Sorter) Less(i, j int) bool { return a[i].Key < a[j].Key }
+func (a KVint64Sorter) Len() int      { return len(a) }
+func (a KVint64Sorter) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a KVint64Sorter) Less(i, j int) bool {
+	if a[i].Key == a[j].Key {
+		return a[i].Value < a[j].Value
+	}
+	return a[i].Key < a[j].Key
+}
 
-func (a KVfloat64Sorter) Len() int           { return len(a) }
-func (a KVfloat64Sorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a KVfloat64Sorter) Less(i, j int) bool { return a[i].Key < a[j].Key }
+func (a KVfloat64Sorter) Len() int      { return len(a) }
+func (a KVfloat64Sorter) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a KVfloat64Sorter) Less(i, j int) bool {
+	if a[i].Key == a[j].Key {
+		return a[i].Value < a[j].Value
+	}
+	return a[i].Key < a[j].Key
+}
 
 // Normalise the number of decimal places for easier comparisons in the tests
 func (a KVfloat64Sorter) Normalise(precision int) {
@@ -158,7 +168,7 @@ func TestBufferedInt64(t *testing.T) {
 
 			ch := make(chan string)
 
-			go doListenUDP(t, ln, ch, len(tc.input))
+			go doListenUDP(t, ln, ch, len(tc.expected))
 			time.Sleep(50 * time.Millisecond)
 
 			err = buffered.CreateSocket()
@@ -297,7 +307,7 @@ func TestBufferedFloat64(t *testing.T) {
 
 			ch := make(chan string)
 
-			go doListenUDP(t, ln, ch, len(tc.input))
+			go doListenUDP(t, ln, ch, len(tc.expected))
 			time.Sleep(50 * time.Millisecond)
 
 			err = buffered.CreateSocket()
@@ -349,8 +359,8 @@ func TestBufferedFloat64(t *testing.T) {
 				}
 			}
 
-			sort.Sort(actual)
 			actual.Normalise(2) // keep 2 decimal digits
+			sort.Sort(actual)
 
 			if !reflect.DeepEqual(tc.expected, actual) {
 				t.Errorf("did not receive all metrics: Expected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
@@ -382,13 +392,13 @@ func TestBufferedAbsolute(t *testing.T) {
 			input: KVint64Sorter{
 				{"a:b:c", 5},
 				{"d:e:f", 2},
-				{"a:b:c", 3},
+				{"a:b:c", 8},
 				{"g.h.i", 1},
 				{"zz.%HOST%", 1}, // also test %HOST% replacement
 			},
 			expected: KVint64Sorter{
 				{"a:b:c", 5},
-				{"a:b:c", 3},
+				{"a:b:c", 8},
 				{"d:e:f", 2},
 				{"g.h.i", 1},
 				{"zz." + hostname, 1}, // also test %HOST% replacement
@@ -410,7 +420,7 @@ func TestBufferedAbsolute(t *testing.T) {
 
 			ch := make(chan string)
 
-			go doListenUDP(t, ln, ch, len(tc.input))
+			go doListenUDP(t, ln, ch, len(tc.expected))
 			time.Sleep(50 * time.Millisecond)
 
 			err = buffered.CreateSocket()
@@ -517,7 +527,7 @@ func TestBufferedFAbsolute(t *testing.T) {
 
 			ch := make(chan string)
 
-			go doListenUDP(t, ln, ch, len(tc.input))
+			go doListenUDP(t, ln, ch, len(tc.expected))
 			time.Sleep(50 * time.Millisecond)
 
 			err = buffered.CreateSocket()

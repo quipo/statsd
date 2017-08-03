@@ -3,10 +3,12 @@ package statsd
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -72,82 +74,528 @@ func GetTestConnection(connType string, t *testing.T) (client, server net.Conn) 
 }
 */
 
-func TestTotal(t *testing.T) {
-	ln, udpAddr := newLocalListenerUDP(t)
-	defer ln.Close()
-	t.Log("Starting new UDP listener at", udpAddr.String())
-	time.Sleep(50 * time.Millisecond)
+func TestClientInt64(t *testing.T) {
+	hostname, err := os.Hostname()
+	if nil != err {
+		t.Fatal("Cannot read host name:", err)
+	}
 
+	regexTotal := regexp.MustCompile(`^(.*)\:([+\-]?\d+)\|(\w).*$`)
 	prefix := "myproject."
 
-	client := NewStatsdClient(udpAddr.String(), prefix)
-
-	ch := make(chan string)
-
-	s := map[string]int64{
-		"a:b:c": 5,
-		"d:e:f": 2,
-		"x:b:c": 5,
-		"g.h.i": 1,
+	tt := []struct {
+		name     string
+		function string
+		suffix   string
+		input    []KVint64
+		expected []KVint64
+	}{
+		{
+			name:     "total",
+			function: "total",
+			suffix:   "t",
+			input: []KVint64{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"x:b:c", 5},
+				{"g.h.i", 1},
+				{"zz.%HOST%", 1}, // also test %HOST% replacement
+			},
+			expected: []KVint64{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"g.h.i", 1},
+				{"x:b:c", 5},
+				{"zz." + hostname, 1}, // also test %HOST% replacement
+			},
+		},
+		{
+			name:     "gauge",
+			function: "gauge",
+			suffix:   "g",
+			input: []KVint64{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"a:b:c", 2},
+				{"g.h.i", 1},
+				{"zz.%HOST%", 1}, // also test %HOST% replacement
+			},
+			expected: []KVint64{
+				{"a:b:c", 5},
+				{"a:b:c", 2},
+				{"d:e:f", 2},
+				{"g.h.i", 1},
+				{"zz." + hostname, 1}, // also test %HOST% replacement
+			},
+		},
+		{
+			name:     "gaugedelta",
+			function: "gaugedelta",
+			suffix:   "g",
+			input: []KVint64{
+				{"a:b:c", +5},
+				{"d:e:f", -2},
+				{"a:b:c", -2},
+				{"g.h.i", +1},
+				{"zz.%HOST%", 1}, // also test %HOST% replacement
+			},
+			expected: []KVint64{
+				{"a:b:c", +5},
+				{"d:e:f", -2},
+				{"a:b:c", -2},
+				{"g.h.i", +1},
+				{"zz." + hostname, 1}, // also test %HOST% replacement
+			},
+		},
+		{
+			name:     "increment",
+			function: "increment",
+			suffix:   "c",
+			input: []KVint64{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"a:b:c", -2},
+				{"g.h.i", 1},
+				{"zz.%HOST%", 1}, // also test %HOST% replacement
+			},
+			expected: []KVint64{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"a:b:c", -2},
+				{"g.h.i", 1},
+				{"zz." + hostname, 1}, // also test %HOST% replacement
+			},
+		},
 	}
 
-	expected := make(map[string]int64)
-	for k, v := range s {
-		expected[k] = v
-	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
 
-	// also test %HOST% replacement
-	s["zz.%HOST%"] = 1
+			ln, udpAddr := newLocalListenerUDP(t)
+			defer ln.Close()
+
+			t.Log("Starting new UDP listener at", udpAddr.String())
+			time.Sleep(50 * time.Millisecond)
+
+			client := NewStatsdClient(udpAddr.String(), prefix)
+
+			ch := make(chan string)
+
+			go doListenUDP(t, ln, ch, len(tc.expected))
+			time.Sleep(50 * time.Millisecond)
+
+			err = client.CreateSocket()
+			if nil != err {
+				t.Fatal(err)
+			}
+			defer client.Close()
+
+			for _, entry := range tc.input {
+				switch tc.function { // send metric
+				case "total":
+					err = client.Total(entry.Key, entry.Value)
+				case "gauge":
+					err = client.Gauge(entry.Key, entry.Value)
+				case "gaugedelta":
+					err = client.GaugeDelta(entry.Key, entry.Value)
+				case "increment":
+					if entry.Value < 0 {
+						err = client.Decr(entry.Key, int64(math.Abs(float64(entry.Value))))
+					} else {
+						err = client.Incr(entry.Key, entry.Value)
+					}
+				}
+				if nil != err {
+					t.Error(err)
+				}
+			}
+
+			received := 0
+			var actual []KVint64
+			for batch := range ch {
+				for _, x := range strings.Split(batch, "\n") {
+					x = strings.TrimSpace(x)
+					if "" == x {
+						continue
+					}
+					if !strings.HasPrefix(x, prefix) {
+						t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+						return
+					}
+					received++
+					vv := regexTotal.FindStringSubmatch(x)
+					//t.Log(vv, x)
+					if len(vv) < 4 {
+						t.Error("Expecting more tokens", len(vv))
+						continue
+					}
+					if vv[3] != tc.suffix {
+						t.Errorf("Metric without expected suffix: expected '%s', actual '%s'", tc.suffix, vv[3])
+					}
+					v, err := strconv.ParseInt(vv[2], 10, 64)
+					if err != nil {
+						t.Error(err)
+					}
+					actual = append(actual, KVint64{Key: vv[1][len(prefix):], Value: v})
+				}
+			}
+
+			sort.Sort(KVint64Sorter(actual))
+			sort.Sort(KVint64Sorter(tc.expected))
+
+			if !reflect.DeepEqual(tc.expected, actual) {
+				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		})
+	}
+}
+
+func TestClientFloat64(t *testing.T) {
 	hostname, err := os.Hostname()
-	expected["zz."+hostname] = 1
 	if nil != err {
-		t.Error("Cannot read host name:", err.Error())
+		t.Fatal("Cannot read host name:", err)
 	}
 
-	go doListenUDP(t, ln, ch, len(s))
+	regexTotal := regexp.MustCompile(`^(.*)\:([+\-]?\d+(?:\.\d+)?)\|(\w).*$`)
+	prefix := "myproject."
 
-	err = client.CreateSocket()
+	tt := []struct {
+		name     string
+		function string
+		suffix   string
+		input    KVfloat64Sorter
+		expected KVfloat64Sorter
+	}{
+		{
+			name:     "fgauge",
+			function: "fgauge",
+			suffix:   "g",
+			input: KVfloat64Sorter{
+				{"a:b:c", 5.2},
+				{"d:e:f", 2.3},
+				{"a:b:c", -2.2},
+				{"g.h.i", 1.2},
+				{"zz.%HOST%", 1.1}, // also test %HOST% replacement
+			},
+			expected: KVfloat64Sorter{
+				{"a:b:c", 5.2},
+				{"d:e:f", 2.3},
+				{"a:b:c", 0},
+				{"a:b:c", -2.2},
+				{"g.h.i", 1.2},
+				{"zz." + hostname, 1.1}, // also test %HOST% replacement
+			},
+		},
+		{
+			name:     "fgaugedelta",
+			function: "fgaugedelta",
+			suffix:   "g",
+			input: KVfloat64Sorter{
+				{"a:b:c", +5.1},
+				{"d:e:f", -2.2},
+				{"a:b:c", -2.1},
+				{"g.h.i", +1.3},
+				{"zz.%HOST%", 1.4}, // also test %HOST% replacement
+			},
+			expected: KVfloat64Sorter{
+				{"a:b:c", +5.1},
+				{"d:e:f", -2.2},
+				{"a:b:c", -2.1},
+				{"g.h.i", +1.3},
+				{"zz." + hostname, 1.4}, // also test %HOST% replacement
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+
+			ln, udpAddr := newLocalListenerUDP(t)
+			defer ln.Close()
+
+			t.Log("Starting new UDP listener at", udpAddr.String())
+			time.Sleep(50 * time.Millisecond)
+
+			client := NewStatsdClient(udpAddr.String(), prefix)
+
+			ch := make(chan string)
+
+			go doListenUDP(t, ln, ch, len(tc.expected))
+			time.Sleep(50 * time.Millisecond)
+
+			err = client.CreateSocket()
+			if nil != err {
+				t.Fatal(err)
+			}
+			//defer client.Close()
+
+			for _, entry := range tc.input {
+				switch tc.function { // send metric
+				case "fgauge":
+					err = client.FGauge(entry.Key, entry.Value)
+				case "fgaugedelta":
+					err = client.FGaugeDelta(entry.Key, entry.Value)
+				}
+				if nil != err {
+					t.Error(err)
+				}
+			}
+			client.Close()
+
+			received := 0
+			var actual KVfloat64Sorter
+			for batch := range ch {
+				for _, x := range strings.Split(batch, "\n") {
+					x = strings.TrimSpace(x)
+					if "" == x {
+						continue
+					}
+					if !strings.HasPrefix(x, prefix) {
+						t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+						return
+					}
+					received++
+					vv := regexTotal.FindStringSubmatch(x)
+					//t.Log(vv, x)
+					if len(vv) < 4 {
+						t.Error("Expecting more tokens", len(vv))
+						continue
+					}
+					if vv[3] != tc.suffix {
+						t.Errorf("Metric without expected suffix: expected '%s', actual '%s'", tc.suffix, vv[3])
+					}
+					v, err := strconv.ParseFloat(vv[2], 64)
+					if err != nil {
+						t.Error(err)
+					}
+					actual = append(actual, KVfloat64{Key: vv[1][len(prefix):], Value: v})
+				}
+			}
+
+			actual.Normalise(2) // keep 2 decimal digits
+			sort.Sort(actual)
+			sort.Sort(tc.expected)
+
+			if !reflect.DeepEqual(tc.expected, actual) {
+				t.Errorf("did not receive all metrics: Expected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		})
+	}
+}
+
+func TestClientAbsolute(t *testing.T) {
+	hostname, err := os.Hostname()
 	if nil != err {
-		t.Fatal("Create socket error:", err)
-	}
-	defer client.Close()
-
-	for k, v := range s {
-		err = client.Total(k, v)
-		if nil != err {
-			t.Error(err)
-		}
+		t.Fatal("Cannot read host name:", err)
 	}
 
-	actual := make(map[string]int64)
+	regexAbsolute := regexp.MustCompile(`^(.*)\:([+\-]?\d+)\|(\w).*$`)
+	prefix := "myproject."
 
-	re := regexp.MustCompile(`^(.*)\:(\d+)\|(\w).*$`)
-
-	for i := len(s); i > 0; i-- {
-		x, open := <-ch
-		if !open {
-			t.Logf("CLOSED CHANNEL")
-			break
-		}
-		x = strings.TrimSpace(x)
-		//t.Logf(x)
-		if !strings.HasPrefix(x, prefix) {
-			t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
-			break
-		}
-		vv := re.FindStringSubmatch(x)
-		if vv[3] != "t" {
-			t.Errorf("Metric without expected suffix: expected 't', actual '%s'", vv[3])
-		}
-		v, err := strconv.ParseInt(vv[2], 10, 64)
-		if err != nil {
-			t.Error("Cannot parse int:", err)
-		}
-		actual[vv[1][len(prefix):]] = v
+	tt := []struct {
+		name     string
+		suffix   string
+		input    KVint64Sorter
+		expected KVint64Sorter
+	}{
+		{
+			name:   "absolute",
+			suffix: "a",
+			input: KVint64Sorter{
+				{"a:b:c", 5},
+				{"d:e:f", 2},
+				{"a:b:c", 8},
+				{"g.h.i", 1},
+				{"zz.%HOST%", 1}, // also test %HOST% replacement
+			},
+			expected: KVint64Sorter{
+				{"a:b:c", 5},
+				{"a:b:c", 8},
+				{"d:e:f", 2},
+				{"g.h.i", 1},
+				{"zz." + hostname, 1}, // also test %HOST% replacement
+			},
+		},
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+
+			ln, udpAddr := newLocalListenerUDP(t)
+			defer ln.Close()
+
+			t.Log("Starting new UDP listener at", udpAddr.String())
+			time.Sleep(50 * time.Millisecond)
+
+			client := NewStatsdClient(udpAddr.String(), prefix)
+
+			ch := make(chan string)
+
+			go doListenUDP(t, ln, ch, len(tc.expected))
+			time.Sleep(50 * time.Millisecond)
+
+			err = client.CreateSocket()
+			if nil != err {
+				t.Fatal(err)
+			}
+			defer client.Close()
+
+			for _, entry := range tc.input {
+				err = client.Absolute(entry.Key, entry.Value)
+				if nil != err {
+					t.Error(err)
+				}
+			}
+
+			received := 0
+			var actual KVint64Sorter
+			for received < len(tc.expected) {
+				batch := <-ch
+				for _, x := range strings.Split(batch, "\n") {
+					x = strings.TrimSpace(x)
+					if "" == x {
+						continue
+					}
+					if !strings.HasPrefix(x, prefix) {
+						t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+						return
+					}
+					received++
+					vv := regexAbsolute.FindStringSubmatch(x)
+					//t.Log(vv, x)
+					if len(vv) < 4 {
+						t.Error("Expecting more tokens", len(vv))
+						continue
+					}
+					if vv[3] != tc.suffix {
+						t.Errorf("Metric without expected suffix: expected '%s', actual '%s'", tc.suffix, vv[3])
+					}
+					v, err := strconv.ParseInt(vv[2], 10, 64)
+					if err != nil {
+						t.Error(err)
+					}
+					actual = append(actual, KVint64{Key: vv[1][len(prefix):], Value: v})
+				}
+			}
+
+			sort.Sort(actual)
+
+			if !reflect.DeepEqual(tc.expected, actual) {
+				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		})
+	}
+}
+
+func TestClientFAbsolute(t *testing.T) {
+	hostname, err := os.Hostname()
+	if nil != err {
+		t.Fatal("Cannot read host name:", err)
+	}
+
+	regexAbsolute := regexp.MustCompile(`^(.*)\:([+\-]?\d+(?:\.\d+)?)\|(\w).*$`)
+	prefix := "myproject."
+
+	tt := []struct {
+		name     string
+		suffix   string
+		input    KVfloat64Sorter
+		expected KVfloat64Sorter
+	}{
+		{
+			name:   "fabsolute",
+			suffix: "a",
+			input: KVfloat64Sorter{
+				{"a:b:c", 5.2},
+				{"d:e:f", 2.1},
+				{"x:b:c", 5.1},
+				{"g.h.i", 1.1},
+				{"zz.%HOST%", 1.5}, // also test %HOST% replacement
+			},
+			expected: KVfloat64Sorter{
+				{"a:b:c", 5.2},
+				{"d:e:f", 2.1},
+				{"g.h.i", 1.1},
+				{"x:b:c", 5.1},
+				{"zz." + hostname, 1.5}, // also test %HOST% replacement
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+
+			ln, udpAddr := newLocalListenerUDP(t)
+			defer ln.Close()
+
+			t.Log("Starting new UDP listener at", udpAddr.String())
+			time.Sleep(50 * time.Millisecond)
+
+			client := NewStatsdClient(udpAddr.String(), prefix)
+
+			ch := make(chan string)
+
+			go doListenUDP(t, ln, ch, len(tc.expected))
+			time.Sleep(50 * time.Millisecond)
+
+			err = client.CreateSocket()
+			if nil != err {
+				t.Fatal(err)
+			}
+			defer client.Close()
+
+			for _, entry := range tc.input {
+				err = client.FAbsolute(entry.Key, entry.Value)
+				if nil != err {
+					t.Error(err)
+				}
+			}
+
+			received := 0
+			var actual KVfloat64Sorter
+			for received < len(tc.expected) {
+				batch := <-ch
+				for _, x := range strings.Split(batch, "\n") {
+					x = strings.TrimSpace(x)
+					if "" == x {
+						continue
+					}
+					if !strings.HasPrefix(x, prefix) {
+						t.Errorf("Metric without expected prefix: expected '%s', actual '%s'", prefix, x)
+						return
+					}
+					received++
+					vv := regexAbsolute.FindStringSubmatch(x)
+					//t.Log(vv, x)
+					if len(vv) < 4 {
+						t.Error("Expecting more tokens", len(vv))
+						continue
+					}
+					if vv[3] != tc.suffix {
+						t.Errorf("Metric without expected suffix: expected '%s', actual '%s'", tc.suffix, vv[3])
+					}
+					v, err := strconv.ParseFloat(vv[2], 64)
+					if err != nil {
+						t.Error(err)
+					}
+					actual = append(actual, KVfloat64{Key: vv[1][len(prefix):], Value: toFixed(v, 2)})
+				}
+			}
+
+			sort.Sort(actual)
+
+			if !reflect.DeepEqual(tc.expected, actual) {
+				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		})
 	}
 }
 
@@ -191,6 +639,7 @@ func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
 		n--
 	}
 	wg.Wait()
+	close(ch)
 	t.Logf("Finished listening on UDP socket @ %s\n", conn.LocalAddr().String())
 }
 
@@ -220,8 +669,8 @@ func doListenTCP(t *testing.T, conn net.Listener, ch chan string, n int) {
 				ch <- string(s)
 			}
 		}
-
 	}
+	close(ch)
 }
 
 func newLocalListenerTCP(t *testing.T) (string, net.Listener) {
