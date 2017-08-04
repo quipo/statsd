@@ -70,9 +70,9 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 
 * `HEAD`:
 
-    * ...
+    * Added more tests
 
-* `v.1.3.0`:
+* [`v.1.3.0`](https://github.com/quipo/statsd/releases/tag/v.1.3.0):
 
     * Added stdout client ("echo" service for debugging)
     * Fixed [issue #23](https://github.com/quipo/statsd/issues/23): GaugeDelta event Stats() should not send an absolute value of 0
@@ -81,14 +81,14 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
     * Added many tests
     * Added compile-time checks that the default events implement the Event interface
 
-* `v.1.2.0`: Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
-* `v.1.1.0`:
+* [`v.1.2.0`](https://github.com/quipo/statsd/releases/tag/1.2.0): Sample rate support (thanks to [Hongjian Zhu](https://github.com/hongjianzhu))
+*  [`v.1.1.0`](https://github.com/quipo/statsd/releases/tag/1.1.0):
 
     * Added `SendEvents` function to `Statsd` interface;
     * Using interface in buffered client constructor;
     * Added/Fixed tests
 
-* `v.1.0.0`: First stable release
+* [`v.1.0.0`](https://github.com/quipo/statsd/releases/tag/1.0.0): First stable release
 * `v.0.0.9`: Added memoization to reduce memory allocations
 * `v.0.0.8`: Pre-release
 
