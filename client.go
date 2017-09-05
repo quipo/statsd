@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"strings"
@@ -16,6 +15,11 @@ import (
 // Logger interface compatible with log.Logger
 type Logger interface {
 	Println(v ...interface{})
+}
+
+// Sampler interface
+type Sampler interface {
+	ShouldFire(rate float32) bool
 }
 
 // UDPPayloadSize is the number of bytes to send at one go through the udp socket.
@@ -52,6 +56,7 @@ type StatsdClient struct {
 	prefix         string
 	eventStringTpl string
 	Logger         Logger
+	Sampler        Sampler
 }
 
 // NewStatsdClient - Factory
@@ -62,6 +67,7 @@ func NewStatsdClient(addr string, prefix string) *StatsdClient {
 		addr:           addr,
 		prefix:         prefix,
 		Logger:         log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		Sampler:        DefaultSampler,
 		eventStringTpl: "%s%s:%s",
 	}
 }
@@ -114,7 +120,7 @@ func (c *StatsdClient) IncrWithSampling(stat string, count int64, sampleRate flo
 		return err
 	}
 
-	if !shouldFire(sampleRate) {
+	if !shouldFire(c.Sampler, sampleRate) {
 		return nil // ignore this call
 	}
 
@@ -136,7 +142,7 @@ func (c *StatsdClient) DecrWithSampling(stat string, count int64, sampleRate flo
 		return err
 	}
 
-	if !shouldFire(sampleRate) {
+	if !shouldFire(c.Sampler, sampleRate) {
 		return nil // ignore this call
 	}
 
@@ -159,7 +165,7 @@ func (c *StatsdClient) TimingWithSampling(stat string, delta int64, sampleRate f
 		return err
 	}
 
-	if !shouldFire(sampleRate) {
+	if !shouldFire(c.Sampler, sampleRate) {
 		return nil // ignore this call
 	}
 
@@ -188,7 +194,7 @@ func (c *StatsdClient) GaugeWithSampling(stat string, value int64, sampleRate fl
 		return err
 	}
 
-	if !shouldFire(sampleRate) {
+	if !shouldFire(c.Sampler, sampleRate) {
 		return nil // ignore this call
 	}
 
@@ -222,7 +228,7 @@ func (c *StatsdClient) FGaugeWithSampling(stat string, value float64, sampleRate
 		return err
 	}
 
-	if !shouldFire(sampleRate) {
+	if !shouldFire(c.Sampler, sampleRate) {
 		return nil
 	}
 
@@ -350,12 +356,10 @@ func checkSampleRate(r float32) error {
 	return nil
 }
 
-func shouldFire(sampleRate float32) bool {
+func shouldFire(sampler Sampler, sampleRate float32) bool {
 	if sampleRate == 1 {
 		return true
 	}
 
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
-	return r.Float32() <= sampleRate
+	return sampler.ShouldFire(sampleRate)
 }
