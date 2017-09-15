@@ -71,6 +71,7 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 * `HEAD`:
 
     * Added more tests
+    * Small optimisation: replace string formatting with concatenation (thanks to @agnivade)
 
 * [`v.1.3.0`](https://github.com/quipo/statsd/releases/tag/v.1.3.0):
 
