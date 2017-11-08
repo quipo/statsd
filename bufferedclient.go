@@ -155,7 +155,7 @@ func (sb *StatsdBuffer) collector() {
 	defer func(sb *StatsdBuffer) {
 		if r := recover(); r != nil {
 			sb.Logger.Println("Caught panic, flushing stats before throwing the panic again")
-			err := sb.flush()
+			err := sb.flush(sb.releaseEvents())
 			if nil != err {
 				sb.Logger.Println("Error flushing stats", err.Error())
 			}
@@ -171,10 +171,13 @@ func (sb *StatsdBuffer) collector() {
 		select {
 		case <-ticker.C:
 			//sb.Logger.Println("Flushing stats")
-			err := sb.flush()
-			if nil != err {
-				sb.Logger.Println("Error flushing stats", err.Error())
-			}
+			events := sb.releaseEvents()
+			go func() {
+				err := sb.flush(events)
+				if nil != err {
+					sb.Logger.Println("Error flushing stats", err.Error())
+				}
+			}()
 		case e := <-sb.eventChannel:
 			//sb.Logger.Println("Received ", e.String())
 			// issue #28: unable to use Incr and PrecisionTiming with the same key (also fixed #27)
@@ -194,7 +197,7 @@ func (sb *StatsdBuffer) collector() {
 			if sb.Verbose {
 				sb.Logger.Println("Asked to terminate. Flushing stats before returning.")
 			}
-			c.reply <- sb.flush()
+			c.reply <- sb.flush(sb.releaseEvents())
 			return
 		}
 	}
@@ -216,19 +219,26 @@ func (sb *StatsdBuffer) Close() (err error) {
 	return err2
 }
 
-// send the events to StatsD and reset them.
-// This function is NOT thread-safe, so it must only be invoked synchronously
-// from within the collector() goroutine
-func (sb *StatsdBuffer) flush() (err error) {
-	n := len(sb.events)
+// Released events can safely be sent away while event loop
+// processes new metrics
+func (sb *StatsdBuffer) releaseEvents() map[string]event.Event {
+	events := sb.events
+	sb.events = make(map[string]event.Event)
+	return events
+}
+
+// send the events to StatsD
+// The argument should be a map that is disconnected from
+// sb.events Concurrent writes to the underlying UDP socket are safe.
+func (sb *StatsdBuffer) flush(events map[string]event.Event) (err error) {
+	n := len(events)
 	if n == 0 {
 		return nil
 	}
-	if err := sb.statsd.SendEvents(sb.events); err != nil {
+	if err := sb.statsd.SendEvents(events); err != nil {
 		sb.Logger.Println(err)
 		return err
 	}
-	sb.events = make(map[string]event.Event)
 
 	return nil
 }
