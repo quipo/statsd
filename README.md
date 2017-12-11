@@ -70,6 +70,8 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 
 * `HEAD`:
 
+	* Fixed behaviour of Gauge with positive numbers: the previous behaviour was the same as GaugeDelta
+	  (FGauge already had the correct behaviour)
     * Added more tests
     * Small optimisation: replace string formatting with concatenation (thanks to @agnivade)
 

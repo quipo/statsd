@@ -18,7 +18,7 @@ func TestGaugeUpdate(t *testing.T) {
 		t.Error(err)
 	}
 
-	expected := []string{"test:+8|g"} // only the last value is flushed
+	expected := []string{"test:8|g"} // only the last value is flushed
 	actual := e1.Stats()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v ", expected, expected, actual, actual)
