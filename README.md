@@ -19,7 +19,7 @@ This client library was inspired by the one embedded in the [Bit.ly NSQ](https:/
 * `Increment` - Count occurrences per second/minute of a specific event
 * `Decrement` - Count occurrences per second/minute of a specific event
 * `Timing` - To track a duration event
-* `PrecisionTiming - To track a duration event
+* `PrecisionTiming` - To track a duration event
 * `Gauge` (int) / `FGauge` (float) - Gauges are a constant data type. They are not subject to averaging, and they don’t change unless you change them. That is, once you set a gauge value, it will be a flat line on the graph until you change it again
 * `GaugeDelta` (int) / `FGaugeDelta` (float) - Same as above, but as a delta change to the previous value rather than a new absolute value
 * `Absolute` (int) / `FAbsolute` (float) - Absolute-valued metric (not averaged/aggregated)
