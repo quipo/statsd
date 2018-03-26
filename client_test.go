@@ -615,6 +615,44 @@ func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	return ln, udpAddr
 }
 
+func TestReconnecting(t *testing.T) {
+	ln, udpAddr := newLocalListenerUDP(t)
+	defer ln.Close()
+
+	prefix := "test."
+
+	client := NewStatsdClient(udpAddr.String(), prefix)
+	client.reconnect_ticker = time.NewTicker(10 * time.Millisecond)
+
+	ch := make(chan string, 0)
+
+	s := map[string]int64{
+		"a:b:c": 5,
+		"d:e:f": 2,
+	}
+
+	go doListenUDP(t, ln, ch, len(s))
+
+	client.CreateSocket()
+	client.Close()
+
+	time.Sleep(15 * time.Millisecond)
+	for k, v := range s {
+		fmt.Println("sent", k, v)
+		client.Total(k, v)
+	}
+
+	timeout := time.After(30 * time.Millisecond)
+	for i := len(s); i > 0; i-- {
+		select {
+		case x := <-ch:
+			fmt.Println("received", x)
+		case <-timeout:
+			t.Fatal("Timed out")
+		}
+	}
+}
+
 func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
 	var wg sync.WaitGroup
 	wg.Add(n)
