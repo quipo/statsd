@@ -175,14 +175,14 @@ func TestClientInt64(t *testing.T) {
 			defer ln.Close()
 
 			t.Log("Starting new UDP listener at", udpAddr.String())
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			client := NewStatsdClient(udpAddr.String(), prefix)
 
 			ch := make(chan string)
 
 			go doListenUDP(t, ln, ch, len(tc.expected))
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			err = client.CreateSocket()
 			if nil != err {
@@ -247,7 +247,7 @@ func TestClientInt64(t *testing.T) {
 				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		})
 	}
 }
@@ -316,14 +316,14 @@ func TestClientFloat64(t *testing.T) {
 			defer ln.Close()
 
 			t.Log("Starting new UDP listener at", udpAddr.String())
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			client := NewStatsdClient(udpAddr.String(), prefix)
 
 			ch := make(chan string)
 
 			go doListenUDP(t, ln, ch, len(tc.expected))
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			err = client.CreateSocket()
 			if nil != err {
@@ -382,7 +382,7 @@ func TestClientFloat64(t *testing.T) {
 				t.Errorf("did not receive all metrics: Expected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		})
 	}
 }
@@ -429,14 +429,14 @@ func TestClientAbsolute(t *testing.T) {
 			defer ln.Close()
 
 			t.Log("Starting new UDP listener at", udpAddr.String())
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			client := NewStatsdClient(udpAddr.String(), prefix)
 
 			ch := make(chan string)
 
 			go doListenUDP(t, ln, ch, len(tc.expected))
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			err = client.CreateSocket()
 			if nil != err {
@@ -488,7 +488,7 @@ func TestClientAbsolute(t *testing.T) {
 				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		})
 	}
 }
@@ -535,14 +535,14 @@ func TestClientFAbsolute(t *testing.T) {
 			defer ln.Close()
 
 			t.Log("Starting new UDP listener at", udpAddr.String())
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			client := NewStatsdClient(udpAddr.String(), prefix)
 
 			ch := make(chan string)
 
 			go doListenUDP(t, ln, ch, len(tc.expected))
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			err = client.CreateSocket()
 			if nil != err {
@@ -594,7 +594,7 @@ func TestClientFAbsolute(t *testing.T) {
 				t.Errorf("did not receive all metrics: \nExpected: \n%T %v, \nActual: \n%T %v ", tc.expected, tc.expected, actual, actual)
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		})
 	}
 }
@@ -726,7 +726,7 @@ func TestTCP(t *testing.T) {
 	defer ln.Close()
 
 	t.Log("Starting new TCP listener at", addr)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	prefix := "myproject."
 	client := NewStatsdClient(addr, prefix)
@@ -766,10 +766,10 @@ func TestTCP(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	go doListenTCP(t, ln, ch, len(s))
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	actual := make(map[string]int64)
 
