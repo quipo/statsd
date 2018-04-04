@@ -59,6 +59,7 @@ type StatsdClient struct {
 	prefix           string
 	sockType         socketType
 	Logger           Logger
+	reconnect        bool
 	reconnect_ticker *time.Ticker
 }
 
@@ -70,14 +71,17 @@ func NewStatsdClient(addr string, prefix string) *StatsdClient {
 		addr:             addr,
 		prefix:           prefix,
 		Logger:           log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		reconnect:        false,
 		reconnect_ticker: time.NewTicker(30 * time.Second),
 	}
 
 	go func() {
 		for range client.reconnect_ticker.C {
-			err := client.Reconnect()
-			if err != nil {
-				fmt.Println(err)
+			if client.reconnect {
+				err := client.Reconnect()
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 	}()
