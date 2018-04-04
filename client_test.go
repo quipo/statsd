@@ -638,16 +638,16 @@ func TestReconnecting(t *testing.T) {
 	client.Close()
 
 	time.Sleep(15 * time.Millisecond)
+	timeout := time.After(5 * time.Millisecond)
+
 	for k, v := range s {
-		fmt.Println("sent", k, v)
+		t.Log("sent", k, v)
 		client.Total(k, v)
 	}
 
-	timeout := time.After(30 * time.Millisecond)
 	for i := len(s); i > 0; i-- {
 		select {
-		case x := <-ch:
-			fmt.Println("received", x)
+		case <-ch:
 		case <-timeout:
 			t.Fatal("Timed out")
 		}
