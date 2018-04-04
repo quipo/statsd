@@ -652,6 +652,7 @@ func TestReconnecting(t *testing.T) {
 			t.Fatal("Timed out")
 		}
 	}
+	client.reconnect = false
 }
 
 func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
