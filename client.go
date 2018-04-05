@@ -13,11 +13,6 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-// Logger interface compatible with log.Logger
-type Logger interface {
-	Println(v ...interface{})
-}
-
 // UDPPayloadSize is the number of bytes to send at one go through the udp socket.
 // SendEvents will try to pack as many events into one udp packet.
 // Change this value as per network capabilities
@@ -54,27 +49,60 @@ const (
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn     net.Conn
-	addr     string
-	prefix   string
-	sockType socketType
-	Logger   Logger
+	conn             net.Conn
+	addr             string
+	prefix           string
+	sockType         socketType
+	Logger           *log.Logger
+	reconnect        bool
+	reconnect_ticker *time.Ticker
 }
 
 // NewStatsdClient - Factory
 func NewStatsdClient(addr string, prefix string) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
-	return &StatsdClient{
-		addr:   addr,
-		prefix: prefix,
-		Logger: log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+	client := &StatsdClient{
+		addr:             addr,
+		prefix:           prefix,
+		Logger:           log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		reconnect:        false,
+		reconnect_ticker: time.NewTicker(30 * time.Second),
 	}
+
+	go func() {
+		for range client.reconnect_ticker.C {
+			if client.reconnect {
+				err := client.Reconnect()
+				if err != nil {
+					client.Logger.Println(err)
+				}
+			}
+		}
+	}()
+	return client
 }
 
 // String returns the StatsD server address
 func (c *StatsdClient) String() string {
 	return c.addr
+}
+
+func (c *StatsdClient) Reconnect() error {
+	var err error
+	if c.sockType == "udp" {
+		c.Logger.Printf("Reconnecing to udp server at %s", c.String())
+		err = c.CreateSocket()
+	} else if c.sockType == "tcp" {
+		c.Logger.Printf("Reconnecing to tcp server at %s", c.String())
+		err = c.CreateTCPSocket()
+	} else if c.sockType == "" {
+		return fmt.Errorf("No socket created, cannot identify connection type")
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CreateSocket creates a UDP connection to a StatsD server
@@ -294,7 +322,7 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 		return errNotConnected
 	}
 	for _, stat := range e.Stats() {
-		//fmt.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
+		//c.Logger.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 		_, err := fmt.Fprintf(c.conn, "%s%s", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 		if nil != err {
 			return err

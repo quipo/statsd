@@ -22,7 +22,7 @@ type StatsdBuffer struct {
 	eventChannel  chan event.Event
 	events        map[string]event.Event
 	closeChannel  chan closeRequest
-	Logger        Logger
+	Logger        *log.Logger
 	Verbose       bool
 }
 
