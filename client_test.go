@@ -615,6 +615,10 @@ func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	return ln, udpAddr
 }
 
+func Teardown(c *StatsdClient) {
+	c.reconnect = false
+}
+
 func TestReconnecting(t *testing.T) {
 	ln, udpAddr := newLocalListenerUDP(t)
 	defer ln.Close()
@@ -624,6 +628,8 @@ func TestReconnecting(t *testing.T) {
 	client := NewStatsdClient(udpAddr.String(), prefix)
 	client.reconnect = true
 	client.reconnect_ticker = time.NewTicker(10 * time.Millisecond)
+
+	defer Teardown(client)
 
 	ch := make(chan string, 0)
 
@@ -652,7 +658,6 @@ func TestReconnecting(t *testing.T) {
 			t.Fatal("Timed out")
 		}
 	}
-	client.reconnect = false
 }
 
 func doListenUDP(t *testing.T, conn *net.UDPConn, ch chan string, n int) {
