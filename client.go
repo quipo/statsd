@@ -75,7 +75,7 @@ func NewStatsdClient(addr string, prefix string) *StatsdClient {
 			if client.reconnect {
 				err := client.Reconnect()
 				if err != nil {
-					fmt.Println(err)
+					client.Logger.Println(err)
 				}
 			}
 		}
@@ -91,10 +91,10 @@ func (c *StatsdClient) String() string {
 func (c *StatsdClient) Reconnect() error {
 	var err error
 	if c.sockType == "udp" {
-		fmt.Println("creating new udp")
+		c.Logger.Printf("Reconnecing to udp server at %s", c.String())
 		err = c.CreateSocket()
 	} else if c.sockType == "tcp" {
-		fmt.Println("creating new tcp")
+		c.Logger.Printf("Reconnecing to tcp server at %s", c.String())
 		err = c.CreateTCPSocket()
 	} else if c.sockType == "" {
 		return fmt.Errorf("No socket created, cannot identify connection type")
@@ -322,7 +322,7 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 		return errNotConnected
 	}
 	for _, stat := range e.Stats() {
-		//fmt.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
+		//c.Logger.Printf("SENDING EVENT %s%s\n", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 		_, err := fmt.Fprintf(c.conn, "%s%s", c.prefix, strings.Replace(stat, "%HOST%", Hostname, 1))
 		if nil != err {
 			return err
