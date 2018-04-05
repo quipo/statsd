@@ -14,7 +14,7 @@ import (
 type StdoutClient struct {
 	FD     *os.File
 	prefix string
-	Logger Logger
+	Logger *log.Logger
 }
 
 // NewStdoutClient - Factory

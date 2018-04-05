@@ -13,11 +13,6 @@ import (
 	"github.com/quipo/statsd/event"
 )
 
-// Logger interface compatible with log.Logger
-type Logger interface {
-	Println(v ...interface{})
-}
-
 // UDPPayloadSize is the number of bytes to send at one go through the udp socket.
 // SendEvents will try to pack as many events into one udp packet.
 // Change this value as per network capabilities
@@ -58,7 +53,7 @@ type StatsdClient struct {
 	addr             string
 	prefix           string
 	sockType         socketType
-	Logger           Logger
+	Logger           *log.Logger
 	reconnect        bool
 	reconnect_ticker *time.Ticker
 }
